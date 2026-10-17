@@ -858,31 +858,47 @@
     }
     .fx-toggle.active .fx-switch::after { transform: translateX(16px); }
 
+    /* ── Touch & Mobile Optimizations ────────────────── */
+    a, button, .social-card, .btn, .hamburger, .fx-toggle {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .hamburger {
+      padding: 10px;
+      margin: -10px;
+    }
+
     /* ── Responsive ────────────────────────────────────── */
     @media (max-width: 768px) {
       nav { padding: 1rem 1.2rem; }
       .nav-links {
-        position: fixed; top: 0; right: -100%; width: 70%; height: 100vh;
-        background: var(--bg); flex-direction: column; justify-content: center;
-        align-items: center; gap: 2rem; transition: right 0.4s ease;
+        position: fixed; top: 0; right: -100%; width: 75%; height: 100vh;
+        background: rgba(10, 10, 10, 0.96);
+        backdrop-filter: blur(25px);
+        -webkit-backdrop-filter: blur(25px);
+        flex-direction: column; justify-content: center;
+        align-items: center; gap: 2.2rem; transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         border-left: 1px solid var(--border);
       }
       .nav-links.open { right: 0; }
-      .nav-links a { font-size: 1.1rem; }
+      .nav-links a { font-size: 1.15rem; }
       .hamburger { display: flex; }
-      section { padding: 4rem 1.2rem; }
-      .about-grid { grid-template-columns: 1fr; }
-      .about-avatar { max-width: 250px; margin: 0 auto; }
+      section { padding: 4.5rem 1.2rem; }
+      .hero-name { font-size: clamp(2.4rem, 9vw, 3.8rem); }
+      .about-grid { grid-template-columns: 1fr; gap: 2rem; }
+      .about-avatar { max-width: 220px; margin: 0 auto; }
       .skills-grid { grid-template-columns: 1fr; }
       .projects-grid { grid-template-columns: 1fr; }
-      .social-grid { flex-direction: column; align-items: center; }
+      .social-grid { flex-direction: column; align-items: stretch; max-width: 320px; margin: 0 auto 2.5rem; }
+      .social-card { min-width: 100%; justify-content: flex-start; padding: 1rem 1.4rem; }
       .admin-panel { width: 100%; max-width: 100vw; }
-      .admin-fab { bottom: 1.2rem; right: 1.2rem; }
       .fx-grid { grid-template-columns: 1fr; }
+      #cursorGlow { width: 280px; height: 280px; }
     }
     @media (max-width: 480px) {
-      .hero-cta { flex-direction: column; }
-      .btn { justify-content: center; }
+      .hero-cta { flex-direction: column; width: 100%; }
+      .btn { justify-content: center; width: 100%; }
+      .about-stats { grid-template-columns: 1fr; gap: 0.8rem; }
     }
   </style>
 </head>
@@ -1209,12 +1225,60 @@ function saveState() { localStorage.setItem('av_site_data', JSON.stringify(state
 loadState();
 
 // ══════════════════════════════════════════════════════════
-//  MOUSE TRACKING
+//  MOUSE & TOUCH TRACKING (MOBILE OPTIMIZED)
 // ══════════════════════════════════════════════════════════
-let mouseX = window.innerWidth / 2;
-let mouseY = window.innerHeight / 2;
-let smoothX = mouseX, smoothY = mouseY;
-document.addEventListener('mousemove', (e) => { mouseX = e.clientX; mouseY = e.clientY; });
+let isPointerActive = false;
+let mouseX = -9999;
+let mouseY = -9999;
+let smoothX = -9999, smoothY = -9999;
+let pointerFadeTimeout = null;
+
+function setPointerPos(x, y, active = true) {
+  mouseX = x;
+  mouseY = y;
+  if (!isPointerActive && active) {
+    smoothX = x;
+    smoothY = y;
+  }
+  isPointerActive = active;
+  if (pointerFadeTimeout) clearTimeout(pointerFadeTimeout);
+}
+
+document.addEventListener('mousemove', (e) => {
+  setPointerPos(e.clientX, e.clientY, true);
+});
+
+document.addEventListener('mouseleave', () => {
+  isPointerActive = false;
+});
+
+// Mobile touch listeners
+document.addEventListener('touchstart', (e) => {
+  if (e.touches && e.touches.length > 0) {
+    const t = e.touches[0];
+    setPointerPos(t.clientX, t.clientY, true);
+    if (state.effects.ripple && !e.target.closest('.admin-panel, #passwordModal, nav, .btn, .social-card')) {
+      triggerRipple(t.clientX, t.clientY);
+    }
+  }
+}, { passive: true });
+
+document.addEventListener('touchmove', (e) => {
+  if (e.touches && e.touches.length > 0) {
+    const t = e.touches[0];
+    setPointerPos(t.clientX, t.clientY, true);
+  }
+}, { passive: true });
+
+document.addEventListener('touchend', () => {
+  pointerFadeTimeout = setTimeout(() => {
+    isPointerActive = false;
+  }, 450);
+}, { passive: true });
+
+document.addEventListener('touchcancel', () => {
+  isPointerActive = false;
+}, { passive: true });
 
 // ══════════════════════════════════════════════════════════
 //  EFFECT 1: PARTICLE TRAIL 🌟
@@ -1263,9 +1327,11 @@ let particleThrottle = 0;
 function updateParticles() {
   if (!state.effects.particles) { pCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height); return; }
   pCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
-  particleThrottle++;
-  if (particleThrottle % 2 === 0) {
-    for (let i = 0; i < 3; i++) particles.push(new Particle(mouseX, mouseY));
+  if (isPointerActive && mouseX > -1000) {
+    particleThrottle++;
+    if (particleThrottle % 2 === 0) {
+      for (let i = 0; i < 2; i++) particles.push(new Particle(mouseX, mouseY));
+    }
   }
   particles = particles.filter(p => p.life > 0);
   particles.forEach(p => { p.update(); p.draw(); });
@@ -1276,9 +1342,12 @@ function updateParticles() {
 // ══════════════════════════════════════════════════════════
 const spotlightEl = q('#spotlight');
 function updateSpotlight() {
-  if (!state.effects.spotlight) { spotlightEl.classList.remove('active'); return; }
+  if (!state.effects.spotlight || !isPointerActive || mouseX < -1000) {
+    spotlightEl.classList.remove('active');
+    return;
+  }
   spotlightEl.classList.add('active');
-  spotlightEl.style.background = `radial-gradient(600px circle at ${mouseX}px ${mouseY}px, rgba(167,139,250,0.06), transparent 60%)`;
+  spotlightEl.style.background = `radial-gradient(450px circle at ${mouseX}px ${mouseY}px, rgba(167,139,250,0.08), transparent 60%)`;
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1287,7 +1356,7 @@ function updateSpotlight() {
 function updateMagneticCards() {
   const cards = qa('.skill-card, .project-card, .social-card, .stat');
   cards.forEach(card => {
-    if (!state.effects.magnetic) {
+    if (!state.effects.magnetic || !isPointerActive || mouseX < -1000) {
       card.style.transform = '';
       return;
     }
@@ -1297,13 +1366,13 @@ function updateMagneticCards() {
     const dx = mouseX - cx;
     const dy = mouseY - cy;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    const maxDist = 350;
+    const maxDist = 320;
 
     if (dist < maxDist) {
       const factor = 1 - dist / maxDist;
-      const rotateY = (dx / maxDist) * 12 * factor;
-      const rotateX = -(dy / maxDist) * 12 * factor;
-      const translateZ = factor * 10;
+      const rotateY = (dx / maxDist) * 10 * factor;
+      const rotateX = -(dy / maxDist) * 10 * factor;
+      const translateZ = factor * 8;
       card.style.transform = `perspective(800px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateZ(${translateZ}px)`;
     } else {
       card.style.transform = '';
@@ -1312,29 +1381,31 @@ function updateMagneticCards() {
 }
 
 // ══════════════════════════════════════════════════════════
-//  EFFECT 4: RIPPLE ON CLICK 🌊
+//  EFFECT 4: RIPPLE (TOUCH & CLICK) 🌊
 // ══════════════════════════════════════════════════════════
 const rippleContainer = q('#rippleContainer');
-document.addEventListener('click', (e) => {
+function triggerRipple(x, y) {
   if (!state.effects.ripple) return;
-  // Don't ripple on admin panel
-  if (e.target.closest('.admin-panel, .admin-fab, .admin-overlay')) return;
-
   const colors = [state.theme.accent1, state.theme.accent2, state.theme.accent3];
   for (let i = 0; i < 3; i++) {
     const ring = document.createElement('div');
     ring.className = 'ripple-ring';
-    const size = 100 + i * 80;
+    const size = 90 + i * 70;
     ring.style.cssText = `
-      left: ${e.clientX}px; top: ${e.clientY}px;
+      left: ${x}px; top: ${y}px;
       width: ${size}px; height: ${size}px;
       border-color: ${colors[i % 3]};
       animation-delay: ${i * 0.1}s;
       opacity: ${0.6 - i * 0.15};
     `;
     rippleContainer.appendChild(ring);
-    setTimeout(() => ring.remove(), 1000);
+    setTimeout(() => ring.remove(), 900);
   }
+}
+
+document.addEventListener('click', (e) => {
+  if (e.target.closest('.admin-panel, #passwordModal, nav, .btn, .social-card')) return;
+  triggerRipple(e.clientX, e.clientY);
 });
 
 // ══════════════════════════════════════════════════════════
@@ -1352,14 +1423,15 @@ resizeStarCanvas();
 
 function createStars() {
   stars = [];
-  for (let i = 0; i < 200; i++) {
+  const starCount = window.innerWidth < 768 ? 100 : 200;
+  for (let i = 0; i < starCount; i++) {
     stars.push({
       x: Math.random() * starCanvas.width,
       y: Math.random() * starCanvas.height,
       baseX: Math.random() * starCanvas.width,
       baseY: Math.random() * starCanvas.height,
       size: Math.random() * 2 + 0.3,
-      depth: Math.random() * 3 + 1, // parallax layer
+      depth: Math.random() * 3 + 1,
       twinkle: Math.random() * Math.PI * 2,
       twinkleSpeed: Math.random() * 0.02 + 0.005,
     });
@@ -1373,8 +1445,8 @@ function updateStarfield() {
 
   const centerX = starCanvas.width / 2;
   const centerY = starCanvas.height / 2;
-  const offsetX = (mouseX - centerX) / centerX;
-  const offsetY = (mouseY - centerY) / centerY;
+  const offsetX = (isPointerActive && mouseX > -1000) ? (mouseX - centerX) / centerX : 0;
+  const offsetY = (isPointerActive && mouseY > -1000) ? (mouseY - centerY) / centerY : 0;
 
   stars.forEach(star => {
     star.twinkle += star.twinkleSpeed;
@@ -1400,10 +1472,13 @@ function updateStarfield() {
 // ══════════════════════════════════════════════════════════
 const glowEl = q('#cursorGlow');
 function updateGlowBlob() {
-  if (!state.effects.glowblob) { glowEl.classList.remove('active'); return; }
+  if (!state.effects.glowblob || !isPointerActive || mouseX < -1000) {
+    glowEl.classList.remove('active');
+    return;
+  }
   glowEl.classList.add('active');
-  smoothX += (mouseX - smoothX) * 0.08;
-  smoothY += (mouseY - smoothY) * 0.08;
+  smoothX += (mouseX - smoothX) * 0.12;
+  smoothY += (mouseY - smoothY) * 0.12;
   glowEl.style.left = smoothX + 'px';
   glowEl.style.top = smoothY + 'px';
   glowEl.style.background = `radial-gradient(circle, ${state.theme.accent1}, ${state.theme.accent2}, ${state.theme.accent3})`;
@@ -1425,10 +1500,11 @@ function initScrambleTargets() {
 
 let lastScrambleTime = 0;
 function updateTextScramble() {
-  if (!state.effects.scramble) {
+  if (!state.effects.scramble || !isPointerActive || mouseX < -1000) {
     scrambleTargets.forEach(el => {
       if (el.dataset.originalText && el.textContent !== el.dataset.originalText && !el.dataset.isScrambling) {
         el.textContent = el.dataset.originalText;
+        el.style.textShadow = '';
       }
     });
     return;
@@ -1445,9 +1521,9 @@ function updateTextScramble() {
     const dist = Math.sqrt((mouseX - cx) ** 2 + (mouseY - cy) ** 2);
     const original = el.dataset.originalText || el.textContent;
 
-    if (dist < 150) {
+    if (dist < 140) {
       el.dataset.isScrambling = 'true';
-      const intensity = 1 - dist / 150;
+      const intensity = 1 - dist / 140;
       const chars = original.split('');
       const result = chars.map(c => {
         if (c === ' ') return c;
@@ -1482,7 +1558,7 @@ resizeDotsCanvas();
 
 function createDots() {
   dots = [];
-  const count = Math.min(80, Math.floor(window.innerWidth * window.innerHeight / 15000));
+  const count = Math.min(window.innerWidth < 768 ? 40 : 80, Math.floor(window.innerWidth * window.innerHeight / 15000));
   for (let i = 0; i < count; i++) {
     dots.push({
       x: Math.random() * dotsCanvas.width,
@@ -1499,8 +1575,9 @@ function updateDots() {
   if (!state.effects.dots) { dCtx.clearRect(0, 0, dotsCanvas.width, dotsCanvas.height); return; }
   dCtx.clearRect(0, 0, dotsCanvas.width, dotsCanvas.height);
 
-  const connectDist = 120;
-  const cursorDist = 200;
+  const connectDist = 110;
+  const cursorDist = 180;
+  const pointerInRange = isPointerActive && mouseX > -1000;
 
   dots.forEach(dot => {
     dot.x += dot.vx;
@@ -1508,13 +1585,15 @@ function updateDots() {
     if (dot.x < 0 || dot.x > dotsCanvas.width) dot.vx *= -1;
     if (dot.y < 0 || dot.y > dotsCanvas.height) dot.vy *= -1;
 
-    // Cursor attraction
-    const dx = mouseX - dot.x;
-    const dy = mouseY - dot.y;
-    const d = Math.sqrt(dx * dx + dy * dy);
-    if (d < cursorDist) {
-      dot.x += dx * 0.008;
-      dot.y += dy * 0.008;
+    // Attraction only if pointer is active & on-screen
+    if (pointerInRange) {
+      const dx = mouseX - dot.x;
+      const dy = mouseY - dot.y;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d < cursorDist) {
+        dot.x += dx * 0.008;
+        dot.y += dy * 0.008;
+      }
     }
   });
 
@@ -1537,20 +1616,22 @@ function updateDots() {
       }
     }
 
-    // Draw lines to cursor
-    const cdx = mouseX - dots[i].x;
-    const cdy = mouseY - dots[i].y;
-    const cd = Math.sqrt(cdx * cdx + cdy * cdy);
-    if (cd < cursorDist) {
-      dCtx.save();
-      dCtx.globalAlpha = (1 - cd / cursorDist) * 0.3;
-      dCtx.strokeStyle = state.theme.accent2;
-      dCtx.lineWidth = 0.8;
-      dCtx.beginPath();
-      dCtx.moveTo(dots[i].x, dots[i].y);
-      dCtx.lineTo(mouseX, mouseY);
-      dCtx.stroke();
-      dCtx.restore();
+    // Draw line to pointer ONLY when pointer is active
+    if (pointerInRange) {
+      const cdx = mouseX - dots[i].x;
+      const cdy = mouseY - dots[i].y;
+      const cd = Math.sqrt(cdx * cdx + cdy * cdy);
+      if (cd < cursorDist) {
+        dCtx.save();
+        dCtx.globalAlpha = (1 - cd / cursorDist) * 0.35;
+        dCtx.strokeStyle = state.theme.accent2;
+        dCtx.lineWidth = 0.8;
+        dCtx.beginPath();
+        dCtx.moveTo(dots[i].x, dots[i].y);
+        dCtx.lineTo(mouseX, mouseY);
+        dCtx.stroke();
+        dCtx.restore();
+      }
     }
 
     // Draw dot
@@ -1822,11 +1903,15 @@ q('#btnExport').addEventListener('click', () => {
   clone.querySelector('body').classList.remove('edit-mode');
   clone.querySelectorAll('[data-editable]').forEach(el => el.removeAttribute('data-editable'));
 
-  // Inject minimal runtime script with only active effects
   const s = document.createElement('script');
   s.textContent = `
-    var mouseX=innerWidth/2,mouseY=innerHeight/2,smoothX=mouseX,smoothY=mouseY;
-    document.addEventListener('mousemove',function(e){mouseX=e.clientX;mouseY=e.clientY});
+    var isPointerActive=false,mouseX=-9999,mouseY=-9999,smoothX=-9999,smoothY=-9999,pTimeout=null;
+    function setPtr(x,y,a){mouseX=x;mouseY=y;if(!isPointerActive&&a){smoothX=x;smoothY=y}isPointerActive=a;if(pTimeout)clearTimeout(pTimeout)}
+    document.addEventListener('mousemove',function(e){setPtr(e.clientX,e.clientY,true)});
+    document.addEventListener('mouseleave',function(){isPointerActive=false});
+    document.addEventListener('touchstart',function(e){if(e.touches&&e.touches.length){setPtr(e.touches[0].clientX,e.touches[0].clientY,true);if(fx.ripple&&!e.target.closest('nav,.btn,.social-card'))trgRpl(e.touches[0].clientX,e.touches[0].clientY)}},{passive:true});
+    document.addEventListener('touchmove',function(e){if(e.touches&&e.touches.length){setPtr(e.touches[0].clientX,e.touches[0].clientY,true)}},{passive:true});
+    document.addEventListener('touchend',function(){pTimeout=setTimeout(function(){isPointerActive=false},450)},{passive:true});
     function toggleNav(){document.getElementById('navLinks').classList.toggle('open')}
     function closeNav(){document.getElementById('navLinks').classList.remove('open')}
     var obs=new IntersectionObserver(function(e){e.forEach(function(e){e.isIntersecting&&e.target.classList.add('visible')})},{threshold:.1});
@@ -1850,41 +1935,40 @@ q('#btnExport').addEventListener('click', () => {
     ${state.effects.dots ? `
     var dc=document.getElementById('dotsCanvas'),dx=dc.getContext('2d'),dt=[];
     dc.width=innerWidth;dc.height=innerHeight;
-    var dN=Math.min(80,~~(innerWidth*innerHeight/15000));
+    var dN=Math.min(window.innerWidth<768?40:80,~~(innerWidth*innerHeight/15000));
     for(var i=0;i<dN;i++)dt.push({x:Math.random()*dc.width,y:Math.random()*dc.height,vx:(Math.random()-.5)*.5,vy:(Math.random()-.5)*.5,s:Math.random()*2+1});
     window.addEventListener('resize',function(){dc.width=innerWidth;dc.height=innerHeight});
     ` : ''}
+    function trgRpl(x,y){var rc=document.getElementById('rippleContainer');var cs=[thm.accent1,thm.accent2,thm.accent3];for(var i=0;i<3;i++){var r=document.createElement('div');r.className='ripple-ring';var sz=90+i*70;r.style.cssText='left:'+x+'px;top:'+y+'px;width:'+sz+'px;height:'+sz+'px;border-color:'+cs[i%3]+';animation-delay:'+i*.1+'s;opacity:'+(0.6-i*.15);rc.appendChild(r);setTimeout(function(el){return function(){el.remove()}}(r),900)}}
     ${state.effects.ripple ? `
-    document.addEventListener('click',function(e){var rc=document.getElementById('rippleContainer');var cs=[thm.accent1,thm.accent2,thm.accent3];for(var i=0;i<3;i++){var r=document.createElement('div');r.className='ripple-ring';var sz=100+i*80;r.style.cssText='left:'+e.clientX+'px;top:'+e.clientY+'px;width:'+sz+'px;height:'+sz+'px;border-color:'+cs[i%3]+';animation-delay:'+i*.1+'s;opacity:'+(0.6-i*.15);rc.appendChild(r);setTimeout(function(el){return function(){el.remove()}}(r),1000)}});
+    document.addEventListener('click',function(e){if(e.target.closest('nav,.btn,.social-card'))return;trgRpl(e.clientX,e.clientY)});
     ` : ''}
     function anim(){
       ${state.effects.particles ? `
-      px.clearRect(0,0,pc.width,pc.height);ptT++;
-      if(ptT%2===0)for(var i=0;i<3;i++)pts.push(new Pt(mouseX,mouseY));
+      px.clearRect(0,0,pc.width,pc.height);
+      if(isPointerActive&&mouseX>-1000){ptT++;if(ptT%2===0)for(var i=0;i<2;i++)pts.push(new Pt(mouseX,mouseY))}
       pts=pts.filter(function(p){return p.l>0});
       pts.forEach(function(p){p.x+=p.sx;p.y+=p.sy;p.l-=p.d;p.s*=.98;px.save();px.globalAlpha=p.l;px.fillStyle=p.c;px.shadowBlur=15;px.shadowColor=p.c;px.beginPath();px.arc(p.x,p.y,p.s,0,6.28);px.fill();px.restore()});
       ` : ''}
       ${state.effects.spotlight ? `
-      var sl=document.getElementById('spotlight');sl.classList.add('active');
-      sl.style.background='radial-gradient(600px circle at '+mouseX+'px '+mouseY+'px,rgba(167,139,250,.06),transparent 60%)';
+      var sl=document.getElementById('spotlight');
+      if(!isPointerActive||mouseX<-1000){sl.classList.remove('active')}else{sl.classList.add('active');sl.style.background='radial-gradient(450px circle at '+mouseX+'px '+mouseY+'px,rgba(167,139,250,.08),transparent 60%)'}
       ` : ''}
       ${state.effects.glowblob ? `
-      var gl=document.getElementById('cursorGlow');gl.classList.add('active');
-      smoothX+=(mouseX-smoothX)*.08;smoothY+=(mouseY-smoothY)*.08;
-      gl.style.left=smoothX+'px';gl.style.top=smoothY+'px';
-      gl.style.background='radial-gradient(circle,'+thm.accent1+','+thm.accent2+','+thm.accent3+')';
+      var gl=document.getElementById('cursorGlow');
+      if(!isPointerActive||mouseX<-1000){gl.classList.remove('active')}else{gl.classList.add('active');smoothX+=(mouseX-smoothX)*.12;smoothY+=(mouseY-smoothY)*.12;gl.style.left=smoothX+'px';gl.style.top=smoothY+'px';gl.style.background='radial-gradient(circle,'+thm.accent1+','+thm.accent2+','+thm.accent3+')'}
       ` : ''}
       ${state.effects.magnetic ? `
-      document.querySelectorAll('.skill-card,.project-card,.social-card,.stat').forEach(function(c){var r=c.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,dx=mouseX-cx,dy=mouseY-cy,d=Math.sqrt(dx*dx+dy*dy);if(d<350){var f=1-d/350;c.style.transform='perspective(800px) rotateX('+-(dy/350)*12*f+'deg) rotateY('+(dx/350)*12*f+'deg) translateZ('+f*10+'px)'}else c.style.transform=''});
+      document.querySelectorAll('.skill-card,.project-card,.social-card,.stat').forEach(function(c){if(!isPointerActive||mouseX<-1000){c.style.transform='';return}var r=c.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,dx=mouseX-cx,dy=mouseY-cy,d=Math.sqrt(dx*dx+dy*dy);if(d<320){var f=1-d/320;c.style.transform='perspective(800px) rotateX('+-(dy/320)*10*f+'deg) rotateY('+(dx/320)*10*f+'deg) translateZ('+f*8+'px)'}else c.style.transform=''});
       ` : ''}
       ${state.effects.starfield ? `
-      sx.clearRect(0,0,sc.width,sc.height);var cxS=sc.width/2,cyS=sc.height/2,oxS=(mouseX-cxS)/cxS,oyS=(mouseY-cyS)/cyS;
+      sx.clearRect(0,0,sc.width,sc.height);var cxS=sc.width/2,cyS=sc.height/2,oxS=(isPointerActive&&mouseX>-1000)?(mouseX-cxS)/cxS:0,oyS=(isPointerActive&&mouseY>-1000)?(mouseY-cyS)/cyS:0;
       st.forEach(function(s){s.t+=s.ts;s.x=s.bx+oxS*s.d*15;s.y=s.by+oyS*s.d*15;var a=.3+Math.sin(s.t)*.4;sx.save();sx.globalAlpha=Math.max(.1,a);sx.fillStyle='#fff';sx.shadowBlur=s.s*3;sx.shadowColor=thm.accent1;sx.beginPath();sx.arc(s.x,s.y,s.s,0,6.28);sx.fill();sx.restore()});
       ` : ''}
       ${state.effects.dots ? `
-      dx.clearRect(0,0,dc.width,dc.height);
-      dt.forEach(function(d){d.x+=d.vx;d.y+=d.vy;if(d.x<0||d.x>dc.width)d.vx*=-1;if(d.y<0||d.y>dc.height)d.vy*=-1;var ddx=mouseX-d.x,ddy=mouseY-d.y,dd=Math.sqrt(ddx*ddx+ddy*ddy);if(dd<200){d.x+=ddx*.008;d.y+=ddy*.008}});
-      for(var i=0;i<dt.length;i++){for(var j=i+1;j<dt.length;j++){var ddx=dt[i].x-dt[j].x,ddy=dt[i].y-dt[j].y,dd=Math.sqrt(ddx*ddx+ddy*ddy);if(dd<120){dx.save();dx.globalAlpha=(1-dd/120)*.15;dx.strokeStyle=thm.accent1;dx.lineWidth=.5;dx.beginPath();dx.moveTo(dt[i].x,dt[i].y);dx.lineTo(dt[j].x,dt[j].y);dx.stroke();dx.restore()}}var cdx=mouseX-dt[i].x,cdy=mouseY-dt[i].y,cd=Math.sqrt(cdx*cdx+cdy*cdy);if(cd<200){dx.save();dx.globalAlpha=(1-cd/200)*.3;dx.strokeStyle=thm.accent2;dx.lineWidth=.8;dx.beginPath();dx.moveTo(dt[i].x,dt[i].y);dx.lineTo(mouseX,mouseY);dx.stroke();dx.restore()}dx.save();dx.globalAlpha=.5;dx.fillStyle=thm.accent3;dx.beginPath();dx.arc(dt[i].x,dt[i].y,dt[i].s,0,6.28);dx.fill();dx.restore()}
+      dx.clearRect(0,0,dc.width,dc.height);var pinR=isPointerActive&&mouseX>-1000;
+      dt.forEach(function(d){d.x+=d.vx;d.y+=d.vy;if(d.x<0||d.x>dc.width)d.vx*=-1;if(d.y<0||d.y>dc.height)d.vy*=-1;if(pinR){var ddx=mouseX-d.x,ddy=mouseY-d.y,dd=Math.sqrt(ddx*ddx+ddy*ddy);if(dd<180){d.x+=ddx*.008;d.y+=ddy*.008}}});
+      for(var i=0;i<dt.length;i++){for(var j=i+1;j<dt.length;j++){var ddx=dt[i].x-dt[j].x,ddy=dt[i].y-dt[j].y,dd=Math.sqrt(ddx*ddx+ddy*ddy);if(dd<110){dx.save();dx.globalAlpha=(1-dd/110)*.15;dx.strokeStyle=thm.accent1;dx.lineWidth=.5;dx.beginPath();dx.moveTo(dt[i].x,dt[i].y);dx.lineTo(dt[j].x,dt[j].y);dx.stroke();dx.restore()}}if(pinR){var cdx=mouseX-dt[i].x,cdy=mouseY-dt[i].y,cd=Math.sqrt(cdx*cdx+cdy*cdy);if(cd<180){dx.save();dx.globalAlpha=(1-cd/180)*.35;dx.strokeStyle=thm.accent2;dx.lineWidth=.8;dx.beginPath();dx.moveTo(dt[i].x,dt[i].y);dx.lineTo(mouseX,mouseY);dx.stroke();dx.restore()}}dx.save();dx.globalAlpha=.5;dx.fillStyle=thm.accent3;dx.beginPath();dx.arc(dt[i].x,dt[i].y,dt[i].s,0,6.28);dx.fill();dx.restore()}
       ` : ''}
       requestAnimationFrame(anim);
     }
@@ -2052,6 +2136,35 @@ document.addEventListener('keydown', (e) => {
     requestEditAccess();
   }
 });
+
+// Mobile secret admin trigger: Long-press (1.5s) or triple-tap on "AV." logo
+const logoEl = q('.nav-logo');
+if (logoEl) {
+  let logoTimer = null;
+  let logoTaps = 0;
+  let tapTimer = null;
+
+  logoEl.addEventListener('touchstart', (e) => {
+    logoTimer = setTimeout(() => {
+      requestEditAccess();
+    }, 1500);
+  }, { passive: true });
+
+  logoEl.addEventListener('touchend', () => {
+    if (logoTimer) clearTimeout(logoTimer);
+    logoTaps++;
+    if (logoTaps >= 3) {
+      logoTaps = 0;
+      requestEditAccess();
+    }
+    clearTimeout(tapTimer);
+    tapTimer = setTimeout(() => { logoTaps = 0; }, 400);
+  }, { passive: true });
+
+  logoEl.addEventListener('touchcancel', () => {
+    if (logoTimer) clearTimeout(logoTimer);
+  });
+}
 
 // Scroll reveal
 const observer = new IntersectionObserver((entries) => {
