@@ -1,0 +1,2072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aditya Vishwakarma</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & Base ─────────────────────────────────── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:        #0a0a0a;
+      --bg-card:   #111111;
+      --bg-card-hover: #1a1a1a;
+      --border:    #1e1e1e;
+      --text:      #e4e4e7;
+      --text-dim:  #71717a;
+      --accent:    #a78bfa;
+      --accent2:   #38bdf8;
+      --accent3:   #34d399;
+      --gradient:  linear-gradient(135deg, var(--accent) 0%, var(--accent2) 50%, var(--accent3) 100%);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      overflow-x: hidden;
+      cursor: default;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ── Grain overlay ────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ── Cursor Effect Canvases ────────────────────────── */
+    #particleCanvas, #starfieldCanvas, #dotsCanvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+    #particleCanvas { z-index: 9998; }
+    #starfieldCanvas { z-index: 0; }
+    #dotsCanvas { z-index: 0; }
+
+    /* Cursor glow blob */
+    #cursorGlow {
+      position: fixed;
+      width: 400px; height: 400px;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0;
+      transition: opacity 0.3s;
+      filter: blur(80px);
+      transform: translate(-50%, -50%);
+      mix-blend-mode: screen;
+    }
+    #cursorGlow.active { opacity: 0.15; }
+
+    /* Spotlight */
+    #spotlight {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    #spotlight.active { opacity: 1; }
+
+    /* Ripple container */
+    #rippleContainer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9997;
+      overflow: hidden;
+    }
+    .ripple-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 2px solid var(--accent);
+      transform: translate(-50%, -50%) scale(0);
+      animation: rippleExpand 0.8s ease-out forwards;
+    }
+    @keyframes rippleExpand {
+      to { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+    }
+
+    /* ── Glow blobs ───────────────────────────────────── */
+    .glow {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.12;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .glow-1 { width: 600px; height: 600px; background: var(--accent); top: -200px; left: -100px; }
+    .glow-2 { width: 500px; height: 500px; background: var(--accent2); bottom: -150px; right: -100px; }
+    .glow-3 { width: 400px; height: 400px; background: var(--accent3); top: 50%; left: 50%; transform: translate(-50%, -50%); }
+
+    /* ── Nav ───────────────────────────────────────────── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      padding: 1.2rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      background: rgba(10, 10, 10, 0.7);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo {
+      font-weight: 700;
+      font-size: 1.1rem;
+      letter-spacing: -0.5px;
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .nav-links { display: flex; gap: 2rem; list-style: none; }
+    .nav-links a {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-dim);
+      transition: color 0.3s;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; z-index: 101; }
+    .hamburger span { width: 24px; height: 2px; background: var(--text); border-radius: 2px; transition: 0.3s; }
+
+    /* ── Section layout ───────────────────────────────── */
+    section {
+      position: relative;
+      z-index: 2;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 6rem 2rem;
+    }
+    .section-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: var(--accent);
+      margin-bottom: 1rem;
+    }
+    .section-title {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -1px;
+      margin-bottom: 2.5rem;
+    }
+
+    /* ── Hero ──────────────────────────────────────────── */
+    #hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding-top: 5rem;
+    }
+    .hero-greeting {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      color: var(--accent);
+      margin-bottom: 1rem;
+      opacity: 0;
+      animation: fadeUp 0.8s 0.2s forwards;
+    }
+    .hero-name {
+      font-size: clamp(2.8rem, 7vw, 5rem);
+      font-weight: 800;
+      letter-spacing: -2px;
+      line-height: 1.05;
+      margin-bottom: 1.5rem;
+      opacity: 0;
+      animation: fadeUp 0.8s 0.4s forwards;
+    }
+    .hero-name .gradient {
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-tagline {
+      font-size: 1.15rem;
+      color: var(--text-dim);
+      max-width: 520px;
+      line-height: 1.8;
+      opacity: 0;
+      animation: fadeUp 0.8s 0.6s forwards;
+    }
+    .hero-cta {
+      display: flex;
+      gap: 1rem;
+      margin-top: 2.5rem;
+      flex-wrap: wrap;
+      opacity: 0;
+      animation: fadeUp 0.8s 0.8s forwards;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.8rem 1.8rem;
+      border-radius: 50px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      border: none;
+    }
+    .btn-primary { background: var(--gradient); color: #0a0a0a; }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(167, 139, 250, 0.3); }
+    .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-2px); }
+    .scroll-indicator {
+      position: absolute;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      opacity: 0;
+      animation: fadeIn 1s 1.2s forwards;
+    }
+    .scroll-indicator span { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 2px; color: var(--text-dim); }
+    .scroll-line { width: 1px; height: 40px; background: var(--gradient); animation: scrollPulse 2s infinite; }
+
+    /* ── About ─────────────────────────────────────────── */
+    .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: center; }
+    .about-avatar {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 6rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .about-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 20px; }
+    .about-avatar::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 20px;
+      background: var(--gradient);
+      opacity: 0.05;
+      pointer-events: none;
+    }
+    .about-text p { color: var(--text-dim); margin-bottom: 1.2rem; font-size: 1rem; }
+    .about-text p strong { color: var(--text); }
+    .about-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 2rem; }
+    .stat {
+      text-align: center;
+      padding: 1.2rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      transition: border-color 0.3s;
+    }
+    .stat:hover { border-color: var(--accent); }
+    .stat-number {
+      font-size: 1.5rem;
+      font-weight: 700;
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .stat-label { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-top: 0.3rem; }
+
+    /* ── Skills ─────────────────────────────────────────── */
+    .skills-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.2rem; }
+    .skill-card {
+      padding: 1.8rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      transition: all 0.3s ease;
+      position: relative;
+      transform-style: preserve-3d;
+      perspective: 800px;
+    }
+    .skill-card:hover { border-color: var(--accent); background: var(--bg-card-hover); }
+    .skill-icon { font-size: 2rem; margin-bottom: 1rem; }
+    .skill-card h3 { font-size: 1.05rem; font-weight: 600; margin-bottom: 0.5rem; }
+    .skill-card p { font-size: 0.85rem; color: var(--text-dim); line-height: 1.6; }
+    .skill-tags { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+    .skill-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      padding: 0.3rem 0.7rem;
+      background: rgba(167, 139, 250, 0.1);
+      color: var(--accent);
+      border-radius: 20px;
+      border: 1px solid rgba(167, 139, 250, 0.15);
+    }
+
+    /* ── Projects ──────────────────────────────────────── */
+    .projects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; }
+    .project-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      transition: all 0.3s ease;
+      position: relative;
+      transform-style: preserve-3d;
+      perspective: 800px;
+    }
+    .project-card:hover { border-color: var(--accent); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3); }
+    .project-banner {
+      height: 160px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      position: relative;
+    }
+    .project-banner::after { content: ''; position: absolute; inset: 0; background: var(--gradient); opacity: 0.07; }
+    .project-card-body { padding: 1.5rem; }
+    .project-card-body h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; }
+    .project-card-body p { font-size: 0.85rem; color: var(--text-dim); line-height: 1.6; margin-bottom: 1rem; }
+    .project-links { display: flex; gap: 0.8rem; }
+    .project-link {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      transition: color 0.3s;
+    }
+    .project-link:hover { color: var(--accent2); }
+
+    /* Magnetic card shine overlay */
+    .card-shine {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      border-radius: inherit;
+      opacity: 0;
+      transition: opacity 0.3s;
+      z-index: 5;
+    }
+
+    /* ── Contact / Social ─────────────────────────────── */
+    .contact-wrapper { text-align: center; }
+    .contact-wrapper .section-title { margin-bottom: 1rem; }
+    .contact-desc { color: var(--text-dim); max-width: 500px; margin: 0 auto 3rem; font-size: 1rem; }
+    .social-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; margin-bottom: 3rem; }
+    .social-card {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      padding: 1rem 1.5rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      min-width: 180px;
+      justify-content: center;
+    }
+    .social-card:hover { border-color: var(--accent); transform: translateY(-3px); background: var(--bg-card-hover); }
+    .social-icon { font-size: 1.4rem; }
+    .social-card span { font-size: 0.9rem; font-weight: 500; }
+    .contact-email { margin-top: 1rem; }
+    .contact-email a {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1rem;
+      color: var(--accent);
+      border-bottom: 1px dashed rgba(167, 139, 250, 0.3);
+      padding-bottom: 2px;
+      transition: border-color 0.3s;
+    }
+    .contact-email a:hover { border-color: var(--accent); }
+
+    /* ── Footer ────────────────────────────────────────── */
+    footer {
+      position: relative; z-index: 2; text-align: center;
+      padding: 3rem 2rem; border-top: 1px solid var(--border);
+    }
+    footer p { font-size: 0.8rem; color: var(--text-dim); }
+    footer .heart { color: var(--accent); }
+
+    /* ── Animations ────────────────────────────────────── */
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes scrollPulse { 0%, 100% { opacity: 0.3; transform: scaleY(0.6); transform-origin: top; } 50% { opacity: 1; transform: scaleY(1); } }
+    .reveal { opacity: 0; transform: translateY(40px); transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+
+    /* Text scramble effect */
+    .scramble-char {
+      display: inline-block;
+      transition: color 0.1s;
+    }
+    .scramble-char.glitch {
+      color: var(--accent);
+      text-shadow: 0 0 8px var(--accent);
+    }
+
+    /* ══════════════════════════════════════════════════════
+       ADMIN PANEL STYLES
+       ══════════════════════════════════════════════════════ */
+    /* ── Password Modal ─────────────────────────────── */
+    .password-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.78);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      z-index: 10005;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    .password-modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .password-modal {
+      background: #111111;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2.2rem 2rem;
+      width: 90%;
+      max-width: 380px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 40px rgba(167, 139, 250, 0.15);
+      transform: scale(0.92);
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .password-modal-overlay.open .password-modal {
+      transform: scale(1);
+    }
+    .password-modal .modal-icon {
+      font-size: 2.5rem;
+      margin-bottom: 0.6rem;
+    }
+    .password-modal h3 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 0.3rem;
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .password-modal p {
+      font-size: 0.82rem;
+      color: var(--text-dim);
+      margin-bottom: 1.4rem;
+    }
+    .password-modal input[type="password"] {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      background: #0a0a0a;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-size: 0.95rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      text-align: center;
+      letter-spacing: 2px;
+    }
+    .password-modal input[type="password"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 15px rgba(167, 139, 250, 0.25);
+    }
+    .pass-error {
+      color: #ef4444;
+      font-size: 0.78rem;
+      margin-top: 0.6rem;
+      min-height: 1.2rem;
+    }
+    .pass-actions {
+      display: flex;
+      gap: 0.8rem;
+      margin-top: 1.2rem;
+    }
+    .btn-cancel, .btn-unlock {
+      flex: 1;
+      padding: 0.8rem;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-cancel {
+      background: #1a1a1a;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+    }
+    .btn-cancel:hover {
+      color: var(--text);
+      border-color: #333;
+    }
+    .btn-unlock {
+      background: var(--gradient);
+      border: none;
+      color: #0a0a0a;
+    }
+    .btn-unlock:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 15px rgba(167, 139, 250, 0.35);
+    }
+    @keyframes shakeModal {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-9px); }
+      40%, 80% { transform: translateX(9px); }
+    }
+    .password-modal.shake {
+      animation: shakeModal 0.35s ease;
+    }
+    .admin-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 10001;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .admin-overlay.open { opacity: 1; pointer-events: auto; }
+    .admin-panel {
+      position: fixed;
+      top: 0;
+      right: -480px;
+      width: 460px;
+      max-width: 90vw;
+      height: 100vh;
+      z-index: 10002;
+      background: #0d0d0d;
+      border-left: 1px solid var(--border);
+      transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .admin-panel.open { right: 0; }
+    .admin-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .admin-header h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .admin-close {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .admin-close:hover { border-color: var(--accent); color: var(--accent); }
+    .admin-tabs {
+      display: flex;
+      padding: 0 1rem;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+      flex-shrink: 0;
+    }
+    .admin-tabs::-webkit-scrollbar { height: 0; }
+    .admin-tab {
+      padding: 0.8rem 0.7rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      cursor: pointer;
+      border: none;
+      background: none;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      white-space: nowrap;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .admin-tab:hover { color: var(--text); }
+    .admin-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .admin-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem;
+    }
+    .admin-body::-webkit-scrollbar { width: 4px; }
+    .admin-body::-webkit-scrollbar-track { background: transparent; }
+    .admin-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .field { margin-bottom: 1.5rem; }
+    .field label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .field input, .field textarea, .field select {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      transition: border-color 0.2s;
+      outline: none;
+    }
+    .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); }
+    .field textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .color-row { display: flex; align-items: center; gap: 0.75rem; }
+    .color-row input[type="color"] {
+      width: 44px; height: 44px;
+      padding: 2px;
+      border-radius: 10px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+    }
+    .color-row input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
+    .color-row input[type="color"]::-webkit-color-swatch { border-radius: 6px; border: none; }
+    .color-label { font-size: 0.85rem; color: var(--text); }
+    .list-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem;
+      margin-bottom: 1rem;
+    }
+    .list-item .field { margin-bottom: 1rem; }
+    .list-item .field:last-child { margin-bottom: 0; }
+    .list-item-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .list-item-header h4 { font-size: 0.85rem; font-weight: 600; color: var(--accent); }
+    .btn-remove {
+      width: 30px; height: 30px;
+      border-radius: 8px;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+      cursor: pointer;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .btn-remove:hover { background: rgba(239, 68, 68, 0.2); border-color: #ef4444; }
+    .btn-add {
+      width: 100%;
+      padding: 0.8rem;
+      border-radius: 12px;
+      background: transparent;
+      border: 1px dashed var(--border);
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    .btn-add:hover { border-color: var(--accent); color: var(--accent); }
+    .admin-footer {
+      padding: 1.2rem 1.5rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 0.8rem;
+      flex-shrink: 0;
+    }
+    .btn-save {
+      flex: 1;
+      padding: 0.8rem;
+      border-radius: 12px;
+      background: var(--gradient);
+      border: none;
+      color: #0a0a0a;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .btn-save:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(167, 139, 250, 0.4); }
+    .btn-export {
+      padding: 0.8rem 1.2rem;
+      border-radius: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-export:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-reset {
+      padding: 0.8rem 1.2rem;
+      border-radius: 12px;
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-reset:hover { background: rgba(239, 68, 68, 0.15); }
+    .toast {
+      position: fixed;
+      bottom: -60px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 99999;
+      padding: 0.8rem 1.5rem;
+      background: var(--accent);
+      color: #0a0a0a;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      transition: bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      white-space: nowrap;
+    }
+    .toast.show { bottom: 6rem; }
+    body.edit-mode [data-editable] {
+      outline: 2px dashed rgba(167, 139, 250, 0.4);
+      outline-offset: 4px;
+      cursor: text;
+      border-radius: 4px;
+    }
+    body.edit-mode [data-editable]:hover { outline-color: var(--accent); }
+    body.edit-mode [data-editable]:focus { outline: 2px solid var(--accent); }
+    .avatar-upload-overlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 5;
+      border-radius: 20px;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 0.5rem;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    body.edit-mode .avatar-upload-overlay { display: flex; }
+    .avatar-upload-overlay span { color: #fff; font-size: 0.85rem; font-weight: 500; }
+    .avatar-upload-overlay .upload-icon { font-size: 2rem; }
+
+    /* ── Effects toggle cards ─────────────────────────── */
+    .fx-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.8rem;
+    }
+    .fx-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      padding: 0.9rem 1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      user-select: none;
+    }
+    .fx-toggle:hover { border-color: rgba(167, 139, 250, 0.4); }
+    .fx-toggle.active { border-color: var(--accent); background: rgba(167, 139, 250, 0.08); }
+    .fx-toggle .fx-icon { font-size: 1.3rem; flex-shrink: 0; }
+    .fx-toggle .fx-info { display: flex; flex-direction: column; }
+    .fx-toggle .fx-name { font-size: 0.8rem; font-weight: 600; color: var(--text); }
+    .fx-toggle .fx-desc { font-size: 0.65rem; color: var(--text-dim); margin-top: 1px; }
+    .fx-switch {
+      margin-left: auto;
+      width: 36px; height: 20px;
+      border-radius: 20px;
+      background: #333;
+      position: relative;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .fx-toggle.active .fx-switch { background: var(--accent); }
+    .fx-switch::after {
+      content: '';
+      position: absolute;
+      top: 2px; left: 2px;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      transition: transform 0.2s;
+    }
+    .fx-toggle.active .fx-switch::after { transform: translateX(16px); }
+
+    /* ── Responsive ────────────────────────────────────── */
+    @media (max-width: 768px) {
+      nav { padding: 1rem 1.2rem; }
+      .nav-links {
+        position: fixed; top: 0; right: -100%; width: 70%; height: 100vh;
+        background: var(--bg); flex-direction: column; justify-content: center;
+        align-items: center; gap: 2rem; transition: right 0.4s ease;
+        border-left: 1px solid var(--border);
+      }
+      .nav-links.open { right: 0; }
+      .nav-links a { font-size: 1.1rem; }
+      .hamburger { display: flex; }
+      section { padding: 4rem 1.2rem; }
+      .about-grid { grid-template-columns: 1fr; }
+      .about-avatar { max-width: 250px; margin: 0 auto; }
+      .skills-grid { grid-template-columns: 1fr; }
+      .projects-grid { grid-template-columns: 1fr; }
+      .social-grid { flex-direction: column; align-items: center; }
+      .admin-panel { width: 100%; max-width: 100vw; }
+      .admin-fab { bottom: 1.2rem; right: 1.2rem; }
+      .fx-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+      .hero-cta { flex-direction: column; }
+      .btn { justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Effect layers -->
+  <canvas id="starfieldCanvas"></canvas>
+  <canvas id="dotsCanvas"></canvas>
+  <div id="cursorGlow"></div>
+  <div id="spotlight"></div>
+  <canvas id="particleCanvas"></canvas>
+  <div id="rippleContainer"></div>
+
+  <!-- Background glows -->
+  <div class="glow glow-1"></div>
+  <div class="glow glow-2"></div>
+  <div class="glow glow-3"></div>
+
+  <!-- Nav -->
+  <nav>
+    <a href="#hero" class="nav-logo" data-editable="navLogo">AV.</a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="#about" onclick="closeNav()">About</a></li>
+      <li><a href="#skills" onclick="closeNav()">Skills</a></li>
+      <li><a href="#projects" onclick="closeNav()">Projects</a></li>
+      <li><a href="#contact" onclick="closeNav()">Contact</a></li>
+    </ul>
+    <div class="hamburger" id="hamburger" onclick="toggleNav()">
+      <span></span><span></span><span></span>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section id="hero">
+    <p class="hero-greeting" data-editable="heroGreeting">// hello world, I'm</p>
+    <h1 class="hero-name">
+      <span data-editable="heroFirstName">Aditya</span><br/>
+      <span class="gradient" data-editable="heroLastName">Vishwakarma.</span>
+    </h1>
+    <p class="hero-tagline" data-editable="heroTagline">
+      Spontaneous tech enthusiast exploring everything from low-level systems to cloud-scale architectures. Building my way to <strong>FAANG</strong> — one commit at a time.
+    </p>
+    <div class="hero-cta">
+      <a href="#contact" class="btn btn-primary"><span>Get in Touch</span> →</a>
+      <a href="#projects" class="btn btn-outline">View Projects</a>
+    </div>
+    <div class="scroll-indicator">
+      <span>Scroll</span>
+      <div class="scroll-line"></div>
+    </div>
+  </section>
+
+  <!-- About -->
+  <section id="about">
+    <div class="reveal">
+      <p class="section-label">// 01. About</p>
+      <h2 class="section-title" data-editable="aboutTitle">Who am I?</h2>
+    </div>
+    <div class="about-grid">
+      <div class="about-avatar reveal" id="avatarBox">
+        <span id="avatarEmoji">👨‍💻</span>
+        <img id="avatarImg" style="display:none;" alt="Aditya Vishwakarma" />
+        <label class="avatar-upload-overlay" for="avatarUpload">
+          <span class="upload-icon">📷</span>
+          <span>Upload Photo</span>
+        </label>
+        <input type="file" id="avatarUpload" accept="image/*" style="display:none;" />
+      </div>
+      <div class="about-text reveal">
+        <div data-editable="aboutBio">
+          <p>Hey! I'm <strong>Aditya Vishwakarma</strong> — a spontaneous, curiosity-driven tech lover who gets excited about <em>everything</em> in the tech world.</p>
+          <p>My mission? To keep growing, keep building, and eventually land a role at a <strong>top-tier tech company</strong>. I believe in learning by doing.</p>
+          <p>When I'm not coding, you'll find me exploring new tools, reading tech blogs, or brainstorming the next side project.</p>
+        </div>
+        <div class="about-stats">
+          <div class="stat"><div class="stat-number" data-editable="stat1val">∞</div><div class="stat-label" data-editable="stat1label">Curiosity</div></div>
+          <div class="stat"><div class="stat-number" data-editable="stat2val">24/7</div><div class="stat-label" data-editable="stat2label">Learning</div></div>
+          <div class="stat"><div class="stat-number" data-editable="stat3val">🎯</div><div class="stat-label" data-editable="stat3label">FAANG Goal</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Skills -->
+  <section id="skills">
+    <div class="reveal">
+      <p class="section-label">// 02. Skills</p>
+      <h2 class="section-title" data-editable="skillsTitle">What I work with</h2>
+    </div>
+    <div class="skills-grid" id="skillsGrid"></div>
+  </section>
+
+  <!-- Projects -->
+  <section id="projects">
+    <div class="reveal">
+      <p class="section-label">// 03. Projects</p>
+      <h2 class="section-title" data-editable="projectsTitle">Things I've built</h2>
+    </div>
+    <div class="projects-grid" id="projectsGrid"></div>
+  </section>
+
+  <!-- Contact -->
+  <section id="contact">
+    <div class="contact-wrapper reveal">
+      <p class="section-label">// 04. Connect</p>
+      <h2 class="section-title" data-editable="contactTitle">Let's connect</h2>
+      <p class="contact-desc" data-editable="contactDesc">I'm always open to new opportunities, collaborations, or just a good tech conversation. Hit me up!</p>
+      <div class="social-grid" id="socialGrid"></div>
+    </div>
+  </section>
+
+  <footer>
+    <p>Designed & built by <span data-editable="footerName">Aditya Vishwakarma</span> &nbsp;<span class="heart">♥</span></p>
+  </footer>
+
+  <!-- Admin Password Verification Modal -->
+  <div class="password-modal-overlay" id="passwordModal">
+    <div class="password-modal">
+      <div class="modal-icon">🔐</div>
+      <h3>Admin Access</h3>
+      <p>Enter your password to unlock the editor.<br><span style="font-size:0.75rem;opacity:0.7;">Shortcut: <kbd style="background:#222;padding:2px 6px;border-radius:4px;border:1px solid #333;">⌘/Ctrl + Shift + P</kbd></span></p>
+      <form id="passwordForm" onsubmit="event.preventDefault(); verifyPassword();">
+        <input type="password" id="adminPassInput" placeholder="Enter password..." autocomplete="current-password" />
+        <div class="pass-error" id="passError"></div>
+        <div class="pass-actions">
+          <button type="button" class="btn-cancel" onclick="closePasswordModal()">Cancel (Esc)</button>
+          <button type="submit" class="btn-unlock">Unlock</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="admin-overlay" id="adminOverlay"></div>
+  <div class="admin-panel" id="adminPanel">
+    <div class="admin-header">
+      <h2>⚙️ Site Editor</h2>
+      <button class="admin-close" id="adminClose">✕</button>
+    </div>
+    <div class="admin-tabs">
+      <button class="admin-tab active" data-tab="profile">Profile</button>
+      <button class="admin-tab" data-tab="theme">Theme</button>
+      <button class="admin-tab" data-tab="effects">Effects</button>
+      <button class="admin-tab" data-tab="skills">Skills</button>
+      <button class="admin-tab" data-tab="projects">Projects</button>
+      <button class="admin-tab" data-tab="socials">Socials</button>
+    </div>
+    <div class="admin-body">
+      <!-- Profile -->
+      <div class="tab-content active" id="tab-profile">
+        <div class="field"><label>First Name</label><input type="text" id="ed-firstName" /></div>
+        <div class="field"><label>Last Name</label><input type="text" id="ed-lastName" /></div>
+        <div class="field"><label>Nav Logo Text</label><input type="text" id="ed-navLogo" /></div>
+        <div class="field"><label>Greeting Line</label><input type="text" id="ed-greeting" /></div>
+        <div class="field"><label>Hero Tagline (HTML)</label><textarea id="ed-tagline" rows="3"></textarea></div>
+        <div class="field"><label>About Bio (HTML)</label><textarea id="ed-aboutBio" rows="6"></textarea></div>
+        <div class="field-row">
+          <div class="field"><label>Stat 1 Value</label><input type="text" id="ed-stat1val" /></div>
+          <div class="field"><label>Stat 1 Label</label><input type="text" id="ed-stat1label" /></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Stat 2 Value</label><input type="text" id="ed-stat2val" /></div>
+          <div class="field"><label>Stat 2 Label</label><input type="text" id="ed-stat2label" /></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Stat 3 Value</label><input type="text" id="ed-stat3val" /></div>
+          <div class="field"><label>Stat 3 Label</label><input type="text" id="ed-stat3label" /></div>
+        </div>
+        <div class="field"><label>Footer Name</label><input type="text" id="ed-footerName" /></div>
+        <div class="field"><label>Admin Password</label><input type="password" id="ed-adminPass" placeholder="Set password (default: admin)" /></div>
+      </div>
+      <!-- Theme -->
+      <div class="tab-content" id="tab-theme">
+        <div class="field"><label>Accent Color 1</label><div class="color-row"><input type="color" id="ed-accent1" value="#a78bfa" /><span class="color-label">Primary</span></div></div>
+        <div class="field"><label>Accent Color 2</label><div class="color-row"><input type="color" id="ed-accent2" value="#38bdf8" /><span class="color-label">Secondary</span></div></div>
+        <div class="field"><label>Accent Color 3</label><div class="color-row"><input type="color" id="ed-accent3" value="#34d399" /><span class="color-label">Tertiary</span></div></div>
+        <div class="field"><label>Background</label><div class="color-row"><input type="color" id="ed-bgColor" value="#0a0a0a" /><span class="color-label">Page BG</span></div></div>
+        <div class="field"><label>Card Background</label><div class="color-row"><input type="color" id="ed-cardBg" value="#111111" /><span class="color-label">Card BG</span></div></div>
+        <div class="field"><label>Text Color</label><div class="color-row"><input type="color" id="ed-textColor" value="#e4e4e7" /><span class="color-label">Text</span></div></div>
+      </div>
+      <!-- Effects -->
+      <div class="tab-content" id="tab-effects">
+        <p style="font-size:0.8rem;color:var(--text-dim);margin-bottom:1.2rem;">Toggle cursor-driven effects. Changes apply instantly & are saved automatically.</p>
+        <div class="fx-grid">
+          <div class="fx-toggle active" data-fx="particles" onclick="toggleFx(this)">
+            <span class="fx-icon">🌟</span>
+            <div class="fx-info"><span class="fx-name">Particle Trail</span><span class="fx-desc">Glowing particles follow cursor</span></div>
+            <div class="fx-switch"></div>
+          </div>
+          <div class="fx-toggle active" data-fx="spotlight" onclick="toggleFx(this)">
+            <span class="fx-icon">🔦</span>
+            <div class="fx-info"><span class="fx-name">Spotlight</span><span class="fx-desc">Soft glow follows cursor</span></div>
+            <div class="fx-switch"></div>
+          </div>
+          <div class="fx-toggle active" data-fx="magnetic" onclick="toggleFx(this)">
+            <span class="fx-icon">🧲</span>
+            <div class="fx-info"><span class="fx-name">Magnetic Cards</span><span class="fx-desc">3D tilt toward cursor</span></div>
+            <div class="fx-switch"></div>
+          </div>
+          <div class="fx-toggle active" data-fx="ripple" onclick="toggleFx(this)">
+            <span class="fx-icon">🌊</span>
+            <div class="fx-info"><span class="fx-name">Click Ripple</span><span class="fx-desc">Gradient rings on click</span></div>
+            <div class="fx-switch"></div>
+          </div>
+          <div class="fx-toggle active" data-fx="starfield" onclick="toggleFx(this)">
+            <span class="fx-icon">✨</span>
+            <div class="fx-info"><span class="fx-name">Starfield</span><span class="fx-desc">Parallax stars in background</span></div>
+            <div class="fx-switch"></div>
+          </div>
+          <div class="fx-toggle active" data-fx="glowblob" onclick="toggleFx(this)">
+            <span class="fx-icon">💫</span>
+            <div class="fx-info"><span class="fx-name">Glow Blob</span><span class="fx-desc">Gradient blob follows cursor</span></div>
+            <div class="fx-switch"></div>
+          </div>
+          <div class="fx-toggle active" data-fx="scramble" onclick="toggleFx(this)">
+            <span class="fx-icon">🔮</span>
+            <div class="fx-info"><span class="fx-name">Text Scramble</span><span class="fx-desc">Text glitches near cursor</span></div>
+            <div class="fx-switch"></div>
+          </div>
+          <div class="fx-toggle active" data-fx="dots" onclick="toggleFx(this)">
+            <span class="fx-icon">🕸️</span>
+            <div class="fx-info"><span class="fx-name">Connected Dots</span><span class="fx-desc">Floating particles + lines</span></div>
+            <div class="fx-switch"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Skills -->
+      <div class="tab-content" id="tab-skills">
+        <div id="skillsList"></div>
+        <button class="btn-add" id="addSkill">+ Add Skill Card</button>
+      </div>
+      <!-- Projects -->
+      <div class="tab-content" id="tab-projects">
+        <div id="projectsList"></div>
+        <button class="btn-add" id="addProject">+ Add Project</button>
+      </div>
+      <!-- Socials -->
+      <div class="tab-content" id="tab-socials">
+        <div id="socialsList"></div>
+        <button class="btn-add" id="addSocial">+ Add Social Link</button>
+      </div>
+    </div>
+    <div class="admin-footer">
+      <button class="btn-save" id="btnSave">💾 Save Changes</button>
+      <button class="btn-export" id="btnExport">⬇ Export</button>
+      <button class="btn-reset" id="btnReset">↺</button>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════════════════════
+function q(sel) { return document.querySelector(sel); }
+function qa(sel) { return document.querySelectorAll(sel); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function toast(msg) {
+  const t = q('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+function toggleNav() { q('#navLinks').classList.toggle('open'); }
+function closeNav() { q('#navLinks').classList.remove('open'); }
+
+// ══════════════════════════════════════════════════════════
+//  DEFAULTS
+// ══════════════════════════════════════════════════════════
+const DEFAULTS = {
+  profile: {
+    firstName: 'Aditya', lastName: 'Vishwakarma.', navLogo: 'AV.',
+    greeting: "// hello world, I'm",
+    tagline: 'Spontaneous tech enthusiast exploring everything from low-level systems to cloud-scale architectures. Building my way to <strong>FAANG</strong> — one commit at a time.',
+    aboutBio: `<p>Hey! I'm <strong>Aditya Vishwakarma</strong> — a spontaneous, curiosity-driven tech lover who gets excited about <em>everything</em> in the tech world.</p><p>My mission? To keep growing, keep building, and eventually land a role at a <strong>top-tier tech company</strong>. I believe in learning by doing.</p><p>When I'm not coding, you'll find me exploring new tools, reading tech blogs, or brainstorming the next side project.</p>`,
+    stat1val: '∞', stat1label: 'Curiosity',
+    stat2val: '24/7', stat2label: 'Learning',
+    stat3val: '🎯', stat3label: 'FAANG Goal',
+    footerName: 'Aditya Vishwakarma',
+    avatarImg: '',
+  },
+  theme: {
+    accent1: '#a78bfa', accent2: '#38bdf8', accent3: '#34d399',
+    bgColor: '#0a0a0a', cardBg: '#111111', textColor: '#e4e4e7',
+  },
+  effects: {
+    particles: true, spotlight: true, magnetic: true, ripple: true,
+    starfield: true, glowblob: true, scramble: true, dots: true,
+  },
+  skills: [
+    { icon: '⚡', title: 'Frontend Development', desc: 'Creating responsive, pixel-perfect interfaces with modern frameworks.', tags: 'React, JavaScript, HTML/CSS, Tailwind' },
+    { icon: '🔧', title: 'Backend Development', desc: 'Building robust APIs and server-side logic that scales.', tags: 'Node.js, Python, Express, REST APIs' },
+    { icon: '🗄️', title: 'Databases & Tools', desc: 'Managing data and workflows with industry-standard tools.', tags: 'MongoDB, SQL, Git, Docker' },
+    { icon: '🧠', title: 'Always Learning', desc: 'Exploring DSA, system design, AI/ML, and what\'s next.', tags: 'DSA, System Design, AI/ML, Cloud' },
+  ],
+  projects: [
+    { emoji: '🚀', title: 'Project One', desc: 'A cool project showcasing what I\'ve been working on.', demo: '#', code: '#' },
+    { emoji: '🔮', title: 'Project Two', desc: 'Another awesome project. Swap in your own details.', demo: '#', code: '#' },
+    { emoji: '🛸', title: 'Project Three', desc: 'Yet another project — add as many as you want.', demo: '#', code: '#' },
+  ],
+  adminPassword: 'admin',
+  socials: [
+    { icon: '📸', label: 'Instagram', url: 'https://instagram.com/yourusername' },
+    { icon: '👻', label: 'Snapchat', url: 'https://snapchat.com/add/yourusername' },
+    { icon: '🐙', label: 'GitHub', url: 'https://github.com/yourusername' },
+    { icon: '💼', label: 'LinkedIn', url: 'https://linkedin.com/in/yourusername' },
+    { icon: '✉️', label: 'Email', url: 'mailto:your@email.com' },
+  ],
+};
+
+// ══════════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════════
+let state;
+function loadState() {
+  try {
+    const s = localStorage.getItem('av_site_data');
+    state = s ? JSON.parse(s) : JSON.parse(JSON.stringify(DEFAULTS));
+    // ensure keys exist for older saves
+    if (!state.effects) state.effects = { ...DEFAULTS.effects };
+    if (!state.adminPassword) state.adminPassword = 'admin';
+  } catch { state = JSON.parse(JSON.stringify(DEFAULTS)); }
+}
+function saveState() { localStorage.setItem('av_site_data', JSON.stringify(state)); }
+loadState();
+
+// ══════════════════════════════════════════════════════════
+//  MOUSE TRACKING
+// ══════════════════════════════════════════════════════════
+let mouseX = window.innerWidth / 2;
+let mouseY = window.innerHeight / 2;
+let smoothX = mouseX, smoothY = mouseY;
+document.addEventListener('mousemove', (e) => { mouseX = e.clientX; mouseY = e.clientY; });
+
+// ══════════════════════════════════════════════════════════
+//  EFFECT 1: PARTICLE TRAIL 🌟
+// ══════════════════════════════════════════════════════════
+const particleCanvas = q('#particleCanvas');
+const pCtx = particleCanvas.getContext('2d');
+let particles = [];
+
+function resizeParticleCanvas() {
+  particleCanvas.width = window.innerWidth;
+  particleCanvas.height = window.innerHeight;
+}
+resizeParticleCanvas();
+
+class Particle {
+  constructor(x, y) {
+    this.x = x; this.y = y;
+    this.size = Math.random() * 4 + 1;
+    this.speedX = (Math.random() - 0.5) * 2;
+    this.speedY = (Math.random() - 0.5) * 2;
+    this.life = 1;
+    this.decay = Math.random() * 0.02 + 0.015;
+    const colors = [state.theme.accent1, state.theme.accent2, state.theme.accent3];
+    this.color = colors[Math.floor(Math.random() * 3)];
+  }
+  update() {
+    this.x += this.speedX;
+    this.y += this.speedY;
+    this.life -= this.decay;
+    this.size *= 0.98;
+  }
+  draw() {
+    pCtx.save();
+    pCtx.globalAlpha = this.life;
+    pCtx.fillStyle = this.color;
+    pCtx.shadowBlur = 15;
+    pCtx.shadowColor = this.color;
+    pCtx.beginPath();
+    pCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    pCtx.fill();
+    pCtx.restore();
+  }
+}
+
+let particleThrottle = 0;
+function updateParticles() {
+  if (!state.effects.particles) { pCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height); return; }
+  pCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
+  particleThrottle++;
+  if (particleThrottle % 2 === 0) {
+    for (let i = 0; i < 3; i++) particles.push(new Particle(mouseX, mouseY));
+  }
+  particles = particles.filter(p => p.life > 0);
+  particles.forEach(p => { p.update(); p.draw(); });
+}
+
+// ══════════════════════════════════════════════════════════
+//  EFFECT 2: SPOTLIGHT 🔦
+// ══════════════════════════════════════════════════════════
+const spotlightEl = q('#spotlight');
+function updateSpotlight() {
+  if (!state.effects.spotlight) { spotlightEl.classList.remove('active'); return; }
+  spotlightEl.classList.add('active');
+  spotlightEl.style.background = `radial-gradient(600px circle at ${mouseX}px ${mouseY}px, rgba(167,139,250,0.06), transparent 60%)`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  EFFECT 3: MAGNETIC CARDS 🧲
+// ══════════════════════════════════════════════════════════
+function updateMagneticCards() {
+  const cards = qa('.skill-card, .project-card, .social-card, .stat');
+  cards.forEach(card => {
+    if (!state.effects.magnetic) {
+      card.style.transform = '';
+      return;
+    }
+    const rect = card.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dx = mouseX - cx;
+    const dy = mouseY - cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const maxDist = 350;
+
+    if (dist < maxDist) {
+      const factor = 1 - dist / maxDist;
+      const rotateY = (dx / maxDist) * 12 * factor;
+      const rotateX = -(dy / maxDist) * 12 * factor;
+      const translateZ = factor * 10;
+      card.style.transform = `perspective(800px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateZ(${translateZ}px)`;
+    } else {
+      card.style.transform = '';
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+//  EFFECT 4: RIPPLE ON CLICK 🌊
+// ══════════════════════════════════════════════════════════
+const rippleContainer = q('#rippleContainer');
+document.addEventListener('click', (e) => {
+  if (!state.effects.ripple) return;
+  // Don't ripple on admin panel
+  if (e.target.closest('.admin-panel, .admin-fab, .admin-overlay')) return;
+
+  const colors = [state.theme.accent1, state.theme.accent2, state.theme.accent3];
+  for (let i = 0; i < 3; i++) {
+    const ring = document.createElement('div');
+    ring.className = 'ripple-ring';
+    const size = 100 + i * 80;
+    ring.style.cssText = `
+      left: ${e.clientX}px; top: ${e.clientY}px;
+      width: ${size}px; height: ${size}px;
+      border-color: ${colors[i % 3]};
+      animation-delay: ${i * 0.1}s;
+      opacity: ${0.6 - i * 0.15};
+    `;
+    rippleContainer.appendChild(ring);
+    setTimeout(() => ring.remove(), 1000);
+  }
+});
+
+// ══════════════════════════════════════════════════════════
+//  EFFECT 5: STARFIELD PARALLAX ✨
+// ══════════════════════════════════════════════════════════
+const starCanvas = q('#starfieldCanvas');
+const sCtx = starCanvas.getContext('2d');
+let stars = [];
+
+function resizeStarCanvas() {
+  starCanvas.width = window.innerWidth;
+  starCanvas.height = window.innerHeight;
+}
+resizeStarCanvas();
+
+function createStars() {
+  stars = [];
+  for (let i = 0; i < 200; i++) {
+    stars.push({
+      x: Math.random() * starCanvas.width,
+      y: Math.random() * starCanvas.height,
+      baseX: Math.random() * starCanvas.width,
+      baseY: Math.random() * starCanvas.height,
+      size: Math.random() * 2 + 0.3,
+      depth: Math.random() * 3 + 1, // parallax layer
+      twinkle: Math.random() * Math.PI * 2,
+      twinkleSpeed: Math.random() * 0.02 + 0.005,
+    });
+  }
+}
+createStars();
+
+function updateStarfield() {
+  if (!state.effects.starfield) { sCtx.clearRect(0, 0, starCanvas.width, starCanvas.height); return; }
+  sCtx.clearRect(0, 0, starCanvas.width, starCanvas.height);
+
+  const centerX = starCanvas.width / 2;
+  const centerY = starCanvas.height / 2;
+  const offsetX = (mouseX - centerX) / centerX;
+  const offsetY = (mouseY - centerY) / centerY;
+
+  stars.forEach(star => {
+    star.twinkle += star.twinkleSpeed;
+    const parallax = star.depth * 15;
+    star.x = star.baseX + offsetX * parallax;
+    star.y = star.baseY + offsetY * parallax;
+
+    const alpha = 0.3 + Math.sin(star.twinkle) * 0.4;
+    sCtx.save();
+    sCtx.globalAlpha = Math.max(0.1, alpha);
+    sCtx.fillStyle = '#fff';
+    sCtx.shadowBlur = star.size * 3;
+    sCtx.shadowColor = state.theme.accent1;
+    sCtx.beginPath();
+    sCtx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+    sCtx.fill();
+    sCtx.restore();
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+//  EFFECT 6: CURSOR GLOW BLOB 💫
+// ══════════════════════════════════════════════════════════
+const glowEl = q('#cursorGlow');
+function updateGlowBlob() {
+  if (!state.effects.glowblob) { glowEl.classList.remove('active'); return; }
+  glowEl.classList.add('active');
+  smoothX += (mouseX - smoothX) * 0.08;
+  smoothY += (mouseY - smoothY) * 0.08;
+  glowEl.style.left = smoothX + 'px';
+  glowEl.style.top = smoothY + 'px';
+  glowEl.style.background = `radial-gradient(circle, ${state.theme.accent1}, ${state.theme.accent2}, ${state.theme.accent3})`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  EFFECT 7: TEXT SCRAMBLE 🔮
+// ══════════════════════════════════════════════════════════
+const scrambleChars = '!<>-_\\/[]{}—=+*^?#_アイウエオカキクケコ';
+let scrambleTargets = [];
+
+function initScrambleTargets() {
+  scrambleTargets = [];
+  qa('.hero-name [data-editable], .section-title[data-editable], .hero-greeting[data-editable]').forEach(el => {
+    if (!el.dataset.originalText) el.dataset.originalText = el.textContent;
+    scrambleTargets.push(el);
+  });
+}
+
+let lastScrambleTime = 0;
+function updateTextScramble() {
+  if (!state.effects.scramble) {
+    scrambleTargets.forEach(el => {
+      if (el.dataset.originalText && el.textContent !== el.dataset.originalText && !el.dataset.isScrambling) {
+        el.textContent = el.dataset.originalText;
+      }
+    });
+    return;
+  }
+
+  const now = Date.now();
+  if (now - lastScrambleTime < 50) return;
+  lastScrambleTime = now;
+
+  scrambleTargets.forEach(el => {
+    const rect = el.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dist = Math.sqrt((mouseX - cx) ** 2 + (mouseY - cy) ** 2);
+    const original = el.dataset.originalText || el.textContent;
+
+    if (dist < 150) {
+      el.dataset.isScrambling = 'true';
+      const intensity = 1 - dist / 150;
+      const chars = original.split('');
+      const result = chars.map(c => {
+        if (c === ' ') return c;
+        return Math.random() < intensity * 0.3
+          ? scrambleChars[Math.floor(Math.random() * scrambleChars.length)]
+          : c;
+      }).join('');
+      el.textContent = result;
+      el.style.textShadow = `0 0 ${intensity * 8}px ${state.theme.accent1}`;
+    } else {
+      if (el.dataset.isScrambling) {
+        el.textContent = original;
+        el.style.textShadow = '';
+        delete el.dataset.isScrambling;
+      }
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+//  EFFECT 8: CONNECTED DOTS 🕸️
+// ══════════════════════════════════════════════════════════
+const dotsCanvas = q('#dotsCanvas');
+const dCtx = dotsCanvas.getContext('2d');
+let dots = [];
+
+function resizeDotsCanvas() {
+  dotsCanvas.width = window.innerWidth;
+  dotsCanvas.height = window.innerHeight;
+}
+resizeDotsCanvas();
+
+function createDots() {
+  dots = [];
+  const count = Math.min(80, Math.floor(window.innerWidth * window.innerHeight / 15000));
+  for (let i = 0; i < count; i++) {
+    dots.push({
+      x: Math.random() * dotsCanvas.width,
+      y: Math.random() * dotsCanvas.height,
+      vx: (Math.random() - 0.5) * 0.5,
+      vy: (Math.random() - 0.5) * 0.5,
+      size: Math.random() * 2 + 1,
+    });
+  }
+}
+createDots();
+
+function updateDots() {
+  if (!state.effects.dots) { dCtx.clearRect(0, 0, dotsCanvas.width, dotsCanvas.height); return; }
+  dCtx.clearRect(0, 0, dotsCanvas.width, dotsCanvas.height);
+
+  const connectDist = 120;
+  const cursorDist = 200;
+
+  dots.forEach(dot => {
+    dot.x += dot.vx;
+    dot.y += dot.vy;
+    if (dot.x < 0 || dot.x > dotsCanvas.width) dot.vx *= -1;
+    if (dot.y < 0 || dot.y > dotsCanvas.height) dot.vy *= -1;
+
+    // Cursor attraction
+    const dx = mouseX - dot.x;
+    const dy = mouseY - dot.y;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    if (d < cursorDist) {
+      dot.x += dx * 0.008;
+      dot.y += dy * 0.008;
+    }
+  });
+
+  // Draw lines between close dots
+  for (let i = 0; i < dots.length; i++) {
+    for (let j = i + 1; j < dots.length; j++) {
+      const dx = dots[i].x - dots[j].x;
+      const dy = dots[i].y - dots[j].y;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d < connectDist) {
+        dCtx.save();
+        dCtx.globalAlpha = (1 - d / connectDist) * 0.15;
+        dCtx.strokeStyle = state.theme.accent1;
+        dCtx.lineWidth = 0.5;
+        dCtx.beginPath();
+        dCtx.moveTo(dots[i].x, dots[i].y);
+        dCtx.lineTo(dots[j].x, dots[j].y);
+        dCtx.stroke();
+        dCtx.restore();
+      }
+    }
+
+    // Draw lines to cursor
+    const cdx = mouseX - dots[i].x;
+    const cdy = mouseY - dots[i].y;
+    const cd = Math.sqrt(cdx * cdx + cdy * cdy);
+    if (cd < cursorDist) {
+      dCtx.save();
+      dCtx.globalAlpha = (1 - cd / cursorDist) * 0.3;
+      dCtx.strokeStyle = state.theme.accent2;
+      dCtx.lineWidth = 0.8;
+      dCtx.beginPath();
+      dCtx.moveTo(dots[i].x, dots[i].y);
+      dCtx.lineTo(mouseX, mouseY);
+      dCtx.stroke();
+      dCtx.restore();
+    }
+
+    // Draw dot
+    dCtx.save();
+    dCtx.globalAlpha = 0.5;
+    dCtx.fillStyle = state.theme.accent3;
+    dCtx.beginPath();
+    dCtx.arc(dots[i].x, dots[i].y, dots[i].size, 0, Math.PI * 2);
+    dCtx.fill();
+    dCtx.restore();
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  MAIN ANIMATION LOOP
+// ══════════════════════════════════════════════════════════
+function animate() {
+  updateParticles();
+  updateSpotlight();
+  updateMagneticCards();
+  updateStarfield();
+  updateGlowBlob();
+  updateTextScramble();
+  updateDots();
+  requestAnimationFrame(animate);
+}
+animate();
+
+// Resize handling
+window.addEventListener('resize', () => {
+  resizeParticleCanvas();
+  resizeStarCanvas();
+  resizeDotsCanvas();
+  createStars();
+  createDots();
+});
+
+// ══════════════════════════════════════════════════════════
+//  EFFECTS TOGGLE
+// ══════════════════════════════════════════════════════════
+function toggleFx(el) {
+  const fx = el.dataset.fx;
+  el.classList.toggle('active');
+  state.effects[fx] = el.classList.contains('active');
+  saveState();
+
+  // Restore scrambled text when turning off
+  if (fx === 'scramble' && !state.effects.scramble) {
+    scrambleTargets.forEach(el => {
+      if (el.dataset.originalText) {
+        el.textContent = el.dataset.originalText;
+        el.style.textShadow = '';
+      }
+    });
+  }
+}
+
+function syncFxToggles() {
+  qa('.fx-toggle').forEach(el => {
+    const fx = el.dataset.fx;
+    if (state.effects[fx]) el.classList.add('active');
+    else el.classList.remove('active');
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+//  RENDER SITE
+// ══════════════════════════════════════════════════════════
+function renderSite() {
+  const p = state.profile;
+  const t = state.theme;
+
+  const r = document.documentElement.style;
+  r.setProperty('--accent', t.accent1);
+  r.setProperty('--accent2', t.accent2);
+  r.setProperty('--accent3', t.accent3);
+  r.setProperty('--bg', t.bgColor);
+  r.setProperty('--bg-card', t.cardBg);
+  r.setProperty('--text', t.textColor);
+  r.setProperty('--gradient', `linear-gradient(135deg, ${t.accent1} 0%, ${t.accent2} 50%, ${t.accent3} 100%)`);
+  document.body.style.background = t.bgColor;
+
+  q('[data-editable="navLogo"]').textContent = p.navLogo;
+  q('[data-editable="heroGreeting"]').textContent = p.greeting;
+  q('[data-editable="heroFirstName"]').textContent = p.firstName;
+  q('[data-editable="heroLastName"]').textContent = p.lastName;
+  q('[data-editable="heroTagline"]').innerHTML = p.tagline;
+  q('[data-editable="aboutBio"]').innerHTML = p.aboutBio;
+  q('[data-editable="stat1val"]').textContent = p.stat1val;
+  q('[data-editable="stat1label"]').textContent = p.stat1label;
+  q('[data-editable="stat2val"]').textContent = p.stat2val;
+  q('[data-editable="stat2label"]').textContent = p.stat2label;
+  q('[data-editable="stat3val"]').textContent = p.stat3val;
+  q('[data-editable="stat3label"]').textContent = p.stat3label;
+  q('[data-editable="footerName"]').textContent = p.footerName;
+
+  const avatarImg = q('#avatarImg');
+  const avatarEmoji = q('#avatarEmoji');
+  if (p.avatarImg) { avatarImg.src = p.avatarImg; avatarImg.style.display = 'block'; avatarEmoji.style.display = 'none'; }
+  else { avatarImg.style.display = 'none'; avatarEmoji.style.display = 'block'; }
+
+  q('#skillsGrid').innerHTML = state.skills.map(s => `
+    <div class="skill-card reveal visible">
+      <div class="skill-icon">${s.icon}</div>
+      <h3>${s.title}</h3>
+      <p>${s.desc}</p>
+      <div class="skill-tags">${s.tags.split(',').map(t => `<span class="skill-tag">${t.trim()}</span>`).join('')}</div>
+      <div class="card-shine"></div>
+    </div>
+  `).join('');
+
+  q('#projectsGrid').innerHTML = state.projects.map(p => `
+    <div class="project-card reveal visible">
+      <div class="project-banner">${p.emoji}</div>
+      <div class="project-card-body">
+        <h3>${p.title}</h3>
+        <p>${p.desc}</p>
+        <div class="project-links">
+          ${p.demo ? `<a href="${p.demo}" class="project-link" target="_blank">↗ Live Demo</a>` : ''}
+          ${p.code ? `<a href="${p.code}" class="project-link" target="_blank">⌥ Source Code</a>` : ''}
+        </div>
+      </div>
+      <div class="card-shine"></div>
+    </div>
+  `).join('');
+
+  q('#socialGrid').innerHTML = state.socials.map(s => `
+    <a href="${s.url}" target="_blank" class="social-card">
+      <span class="social-icon">${s.icon}</span>
+      <span>${s.label}</span>
+    </a>
+  `).join('');
+
+  // Re-init scramble targets after render
+  initScrambleTargets();
+}
+
+// ══════════════════════════════════════════════════════════
+//  RENDER ADMIN
+// ══════════════════════════════════════════════════════════
+function renderAdmin() {
+  const p = state.profile;
+  const t = state.theme;
+  q('#ed-firstName').value = p.firstName;
+  q('#ed-lastName').value = p.lastName;
+  q('#ed-navLogo').value = p.navLogo;
+  q('#ed-greeting').value = p.greeting;
+  q('#ed-tagline').value = p.tagline;
+  q('#ed-aboutBio').value = p.aboutBio;
+  q('#ed-stat1val').value = p.stat1val;
+  q('#ed-stat1label').value = p.stat1label;
+  q('#ed-stat2val').value = p.stat2val;
+  q('#ed-stat2label').value = p.stat2label;
+  q('#ed-stat3val').value = p.stat3val;
+  q('#ed-stat3label').value = p.stat3label;
+  q('#ed-footerName').value = p.footerName;
+  q('#ed-adminPass').value = state.adminPassword || 'admin';
+  q('#ed-accent1').value = t.accent1;
+  q('#ed-accent2').value = t.accent2;
+  q('#ed-accent3').value = t.accent3;
+  q('#ed-bgColor').value = t.bgColor;
+  q('#ed-cardBg').value = t.cardBg;
+  q('#ed-textColor').value = t.textColor;
+  renderSkillsList();
+  renderProjectsList();
+  renderSocialsList();
+  syncFxToggles();
+}
+
+function renderSkillsList() {
+  q('#skillsList').innerHTML = state.skills.map((s, i) => `
+    <div class="list-item">
+      <div class="list-item-header"><h4>Skill ${i+1}</h4><button class="btn-remove" onclick="removeSkill(${i})">×</button></div>
+      <div class="field-row">
+        <div class="field"><label>Icon</label><input type="text" value="${s.icon}" onchange="state.skills[${i}].icon=this.value" /></div>
+        <div class="field"><label>Title</label><input type="text" value="${esc(s.title)}" onchange="state.skills[${i}].title=this.value" /></div>
+      </div>
+      <div class="field"><label>Description</label><textarea rows="2" onchange="state.skills[${i}].desc=this.value">${esc(s.desc)}</textarea></div>
+      <div class="field"><label>Tags (comma-separated)</label><input type="text" value="${esc(s.tags)}" onchange="state.skills[${i}].tags=this.value" /></div>
+    </div>
+  `).join('');
+}
+function renderProjectsList() {
+  q('#projectsList').innerHTML = state.projects.map((p, i) => `
+    <div class="list-item">
+      <div class="list-item-header"><h4>Project ${i+1}</h4><button class="btn-remove" onclick="removeProject(${i})">×</button></div>
+      <div class="field-row">
+        <div class="field"><label>Emoji</label><input type="text" value="${p.emoji}" onchange="state.projects[${i}].emoji=this.value" /></div>
+        <div class="field"><label>Title</label><input type="text" value="${esc(p.title)}" onchange="state.projects[${i}].title=this.value" /></div>
+      </div>
+      <div class="field"><label>Description</label><textarea rows="2" onchange="state.projects[${i}].desc=this.value">${esc(p.desc)}</textarea></div>
+      <div class="field-row">
+        <div class="field"><label>Demo URL</label><input type="text" value="${esc(p.demo)}" onchange="state.projects[${i}].demo=this.value" /></div>
+        <div class="field"><label>Code URL</label><input type="text" value="${esc(p.code)}" onchange="state.projects[${i}].code=this.value" /></div>
+      </div>
+    </div>
+  `).join('');
+}
+function renderSocialsList() {
+  q('#socialsList').innerHTML = state.socials.map((s, i) => `
+    <div class="list-item">
+      <div class="list-item-header"><h4>${s.label}</h4><button class="btn-remove" onclick="removeSocial(${i})">×</button></div>
+      <div class="field-row">
+        <div class="field"><label>Icon</label><input type="text" value="${s.icon}" onchange="state.socials[${i}].icon=this.value" /></div>
+        <div class="field"><label>Label</label><input type="text" value="${esc(s.label)}" onchange="state.socials[${i}].label=this.value" /></div>
+      </div>
+      <div class="field"><label>URL</label><input type="text" value="${esc(s.url)}" onchange="state.socials[${i}].url=this.value" /></div>
+    </div>
+  `).join('');
+}
+
+function removeSkill(i)   { state.skills.splice(i, 1); renderSkillsList(); }
+function removeProject(i) { state.projects.splice(i, 1); renderProjectsList(); }
+function removeSocial(i)  { state.socials.splice(i, 1); renderSocialsList(); }
+
+q('#addSkill').addEventListener('click', () => { state.skills.push({ icon: '✨', title: 'New Skill', desc: 'Description...', tags: 'Tag1, Tag2' }); renderSkillsList(); });
+q('#addProject').addEventListener('click', () => { state.projects.push({ emoji: '🆕', title: 'New Project', desc: 'Description...', demo: '#', code: '#' }); renderProjectsList(); });
+q('#addSocial').addEventListener('click', () => { state.socials.push({ icon: '🔗', label: 'New Link', url: 'https://' }); renderSocialsList(); });
+
+// Save
+q('#btnSave').addEventListener('click', () => {
+  state.profile.firstName  = q('#ed-firstName').value;
+  state.profile.lastName   = q('#ed-lastName').value;
+  state.profile.navLogo    = q('#ed-navLogo').value;
+  state.profile.greeting   = q('#ed-greeting').value;
+  state.profile.tagline    = q('#ed-tagline').value;
+  state.profile.aboutBio   = q('#ed-aboutBio').value;
+  state.profile.stat1val   = q('#ed-stat1val').value;
+  state.profile.stat1label = q('#ed-stat1label').value;
+  state.profile.stat2val   = q('#ed-stat2val').value;
+  state.profile.stat2label = q('#ed-stat2label').value;
+  state.profile.stat3val   = q('#ed-stat3val').value;
+  state.profile.stat3label = q('#ed-stat3label').value;
+  state.profile.footerName = q('#ed-footerName').value;
+  const newPass = q('#ed-adminPass').value.trim();
+  if (newPass) state.adminPassword = newPass;
+  state.theme.accent1   = q('#ed-accent1').value;
+  state.theme.accent2   = q('#ed-accent2').value;
+  state.theme.accent3   = q('#ed-accent3').value;
+  state.theme.bgColor   = q('#ed-bgColor').value;
+  state.theme.cardBg    = q('#ed-cardBg').value;
+  state.theme.textColor = q('#ed-textColor').value;
+  saveState();
+  renderSite();
+  toast('✅ Changes saved!');
+});
+
+// Live theme preview
+['accent1','accent2','accent3','bgColor','cardBg','textColor'].forEach(key => {
+  q(`#ed-${key}`).addEventListener('input', (e) => {
+    state.theme[key] = e.target.value;
+    const r = document.documentElement.style;
+    r.setProperty('--accent', state.theme.accent1);
+    r.setProperty('--accent2', state.theme.accent2);
+    r.setProperty('--accent3', state.theme.accent3);
+    r.setProperty('--bg', state.theme.bgColor);
+    r.setProperty('--bg-card', state.theme.cardBg);
+    r.setProperty('--text', state.theme.textColor);
+    r.setProperty('--gradient', `linear-gradient(135deg, ${state.theme.accent1} 0%, ${state.theme.accent2} 50%, ${state.theme.accent3} 100%)`);
+    document.body.style.background = state.theme.bgColor;
+  });
+});
+
+// Export
+q('#btnExport').addEventListener('click', () => {
+  const clone = document.documentElement.cloneNode(true);
+  clone.querySelectorAll('.admin-overlay, .admin-panel, #passwordModal, .toast, #avatarUpload, .avatar-upload-overlay').forEach(el => el.remove());
+  clone.querySelectorAll('script').forEach(el => el.remove());
+  clone.querySelector('body').classList.remove('edit-mode');
+  clone.querySelectorAll('[data-editable]').forEach(el => el.removeAttribute('data-editable'));
+
+  // Inject minimal runtime script with only active effects
+  const s = document.createElement('script');
+  s.textContent = `
+    var mouseX=innerWidth/2,mouseY=innerHeight/2,smoothX=mouseX,smoothY=mouseY;
+    document.addEventListener('mousemove',function(e){mouseX=e.clientX;mouseY=e.clientY});
+    function toggleNav(){document.getElementById('navLinks').classList.toggle('open')}
+    function closeNav(){document.getElementById('navLinks').classList.remove('open')}
+    var obs=new IntersectionObserver(function(e){e.forEach(function(e){e.isIntersecting&&e.target.classList.add('visible')})},{threshold:.1});
+    document.querySelectorAll('.reveal').forEach(function(e){obs.observe(e)});
+    window.addEventListener('scroll',function(){var i=document.querySelector('.scroll-indicator');if(i)i.style.opacity=scrollY>100?'0':'1'});
+    var fx=${JSON.stringify(state.effects)};
+    var thm=${JSON.stringify(state.theme)};
+    ${state.effects.particles ? `
+    var pc=document.getElementById('particleCanvas'),px=pc.getContext('2d'),pts=[];
+    pc.width=innerWidth;pc.height=innerHeight;
+    window.addEventListener('resize',function(){pc.width=innerWidth;pc.height=innerHeight});
+    function Pt(x,y){this.x=x;this.y=y;this.s=Math.random()*4+1;this.sx=(Math.random()-.5)*2;this.sy=(Math.random()-.5)*2;this.l=1;this.d=Math.random()*.02+.015;var c=[thm.accent1,thm.accent2,thm.accent3];this.c=c[~~(Math.random()*3)]}
+    var ptT=0;
+    ` : ''}
+    ${state.effects.starfield ? `
+    var sc=document.getElementById('starfieldCanvas'),sx=sc.getContext('2d'),st=[];
+    sc.width=innerWidth;sc.height=innerHeight;
+    for(var i=0;i<200;i++)st.push({x:0,y:0,bx:Math.random()*sc.width,by:Math.random()*sc.height,s:Math.random()*2+.3,d:Math.random()*3+1,t:Math.random()*6.28,ts:Math.random()*.02+.005});
+    window.addEventListener('resize',function(){sc.width=innerWidth;sc.height=innerHeight});
+    ` : ''}
+    ${state.effects.dots ? `
+    var dc=document.getElementById('dotsCanvas'),dx=dc.getContext('2d'),dt=[];
+    dc.width=innerWidth;dc.height=innerHeight;
+    var dN=Math.min(80,~~(innerWidth*innerHeight/15000));
+    for(var i=0;i<dN;i++)dt.push({x:Math.random()*dc.width,y:Math.random()*dc.height,vx:(Math.random()-.5)*.5,vy:(Math.random()-.5)*.5,s:Math.random()*2+1});
+    window.addEventListener('resize',function(){dc.width=innerWidth;dc.height=innerHeight});
+    ` : ''}
+    ${state.effects.ripple ? `
+    document.addEventListener('click',function(e){var rc=document.getElementById('rippleContainer');var cs=[thm.accent1,thm.accent2,thm.accent3];for(var i=0;i<3;i++){var r=document.createElement('div');r.className='ripple-ring';var sz=100+i*80;r.style.cssText='left:'+e.clientX+'px;top:'+e.clientY+'px;width:'+sz+'px;height:'+sz+'px;border-color:'+cs[i%3]+';animation-delay:'+i*.1+'s;opacity:'+(0.6-i*.15);rc.appendChild(r);setTimeout(function(el){return function(){el.remove()}}(r),1000)}});
+    ` : ''}
+    function anim(){
+      ${state.effects.particles ? `
+      px.clearRect(0,0,pc.width,pc.height);ptT++;
+      if(ptT%2===0)for(var i=0;i<3;i++)pts.push(new Pt(mouseX,mouseY));
+      pts=pts.filter(function(p){return p.l>0});
+      pts.forEach(function(p){p.x+=p.sx;p.y+=p.sy;p.l-=p.d;p.s*=.98;px.save();px.globalAlpha=p.l;px.fillStyle=p.c;px.shadowBlur=15;px.shadowColor=p.c;px.beginPath();px.arc(p.x,p.y,p.s,0,6.28);px.fill();px.restore()});
+      ` : ''}
+      ${state.effects.spotlight ? `
+      var sl=document.getElementById('spotlight');sl.classList.add('active');
+      sl.style.background='radial-gradient(600px circle at '+mouseX+'px '+mouseY+'px,rgba(167,139,250,.06),transparent 60%)';
+      ` : ''}
+      ${state.effects.glowblob ? `
+      var gl=document.getElementById('cursorGlow');gl.classList.add('active');
+      smoothX+=(mouseX-smoothX)*.08;smoothY+=(mouseY-smoothY)*.08;
+      gl.style.left=smoothX+'px';gl.style.top=smoothY+'px';
+      gl.style.background='radial-gradient(circle,'+thm.accent1+','+thm.accent2+','+thm.accent3+')';
+      ` : ''}
+      ${state.effects.magnetic ? `
+      document.querySelectorAll('.skill-card,.project-card,.social-card,.stat').forEach(function(c){var r=c.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,dx=mouseX-cx,dy=mouseY-cy,d=Math.sqrt(dx*dx+dy*dy);if(d<350){var f=1-d/350;c.style.transform='perspective(800px) rotateX('+-(dy/350)*12*f+'deg) rotateY('+(dx/350)*12*f+'deg) translateZ('+f*10+'px)'}else c.style.transform=''});
+      ` : ''}
+      ${state.effects.starfield ? `
+      sx.clearRect(0,0,sc.width,sc.height);var cxS=sc.width/2,cyS=sc.height/2,oxS=(mouseX-cxS)/cxS,oyS=(mouseY-cyS)/cyS;
+      st.forEach(function(s){s.t+=s.ts;s.x=s.bx+oxS*s.d*15;s.y=s.by+oyS*s.d*15;var a=.3+Math.sin(s.t)*.4;sx.save();sx.globalAlpha=Math.max(.1,a);sx.fillStyle='#fff';sx.shadowBlur=s.s*3;sx.shadowColor=thm.accent1;sx.beginPath();sx.arc(s.x,s.y,s.s,0,6.28);sx.fill();sx.restore()});
+      ` : ''}
+      ${state.effects.dots ? `
+      dx.clearRect(0,0,dc.width,dc.height);
+      dt.forEach(function(d){d.x+=d.vx;d.y+=d.vy;if(d.x<0||d.x>dc.width)d.vx*=-1;if(d.y<0||d.y>dc.height)d.vy*=-1;var ddx=mouseX-d.x,ddy=mouseY-d.y,dd=Math.sqrt(ddx*ddx+ddy*ddy);if(dd<200){d.x+=ddx*.008;d.y+=ddy*.008}});
+      for(var i=0;i<dt.length;i++){for(var j=i+1;j<dt.length;j++){var ddx=dt[i].x-dt[j].x,ddy=dt[i].y-dt[j].y,dd=Math.sqrt(ddx*ddx+ddy*ddy);if(dd<120){dx.save();dx.globalAlpha=(1-dd/120)*.15;dx.strokeStyle=thm.accent1;dx.lineWidth=.5;dx.beginPath();dx.moveTo(dt[i].x,dt[i].y);dx.lineTo(dt[j].x,dt[j].y);dx.stroke();dx.restore()}}var cdx=mouseX-dt[i].x,cdy=mouseY-dt[i].y,cd=Math.sqrt(cdx*cdx+cdy*cdy);if(cd<200){dx.save();dx.globalAlpha=(1-cd/200)*.3;dx.strokeStyle=thm.accent2;dx.lineWidth=.8;dx.beginPath();dx.moveTo(dt[i].x,dt[i].y);dx.lineTo(mouseX,mouseY);dx.stroke();dx.restore()}dx.save();dx.globalAlpha=.5;dx.fillStyle=thm.accent3;dx.beginPath();dx.arc(dt[i].x,dt[i].y,dt[i].s,0,6.28);dx.fill();dx.restore()}
+      ` : ''}
+      requestAnimationFrame(anim);
+    }
+    anim();
+  `;
+  clone.querySelector('body').appendChild(s);
+
+  const html = '<!DOCTYPE html>\n' + clone.outerHTML;
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'aditya-vishwakarma-site.html';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('⬇️ Clean site exported!');
+});
+
+// Reset
+q('#btnReset').addEventListener('click', () => {
+  if (!confirm('Reset all changes to defaults?')) return;
+  localStorage.removeItem('av_site_data');
+  state = JSON.parse(JSON.stringify(DEFAULTS));
+  saveState(); renderSite(); renderAdmin();
+  toast('↺ Reset to defaults');
+});
+
+// Avatar upload
+q('#avatarUpload').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => { state.profile.avatarImg = ev.target.result; saveState(); renderSite(); toast('📷 Avatar updated!'); };
+  reader.readAsDataURL(file);
+});
+
+// ══════════════════════════════════════════════════════════
+//  AUTH & PANEL CONTROLS
+// ══════════════════════════════════════════════════════════
+let panelOpen = false;
+let isAuthenticated = false;
+
+function openPanel() {
+  panelOpen = true;
+  q('#adminPanel').classList.add('open');
+  q('#adminOverlay').classList.add('open');
+  document.body.classList.add('edit-mode');
+  renderAdmin();
+}
+
+function closePanel() {
+  panelOpen = false;
+  q('#adminPanel').classList.remove('open');
+  q('#adminOverlay').classList.remove('open');
+  document.body.classList.remove('edit-mode');
+}
+
+function openPasswordModal() {
+  const modal = q('#passwordModal');
+  const input = q('#adminPassInput');
+  const err = q('#passError');
+  err.textContent = '';
+  input.value = '';
+  modal.classList.add('open');
+  setTimeout(() => input.focus(), 100);
+}
+
+function closePasswordModal() {
+  q('#passwordModal').classList.remove('open');
+  const input = q('#adminPassInput');
+  input.blur();
+}
+
+function verifyPassword() {
+  const input = q('#adminPassInput');
+  const val = input.value;
+  const correct = state.adminPassword || 'admin';
+  if (val === correct) {
+    isAuthenticated = true;
+    closePasswordModal();
+    openPanel();
+    toast('🔓 Welcome back! Editor opened.');
+  } else {
+    const box = q('#passwordModal .password-modal');
+    const err = q('#passError');
+    err.textContent = 'Incorrect password. Please try again.';
+    box.classList.remove('shake');
+    void box.offsetWidth;
+    box.classList.add('shake');
+    input.select();
+  }
+}
+
+function requestEditAccess() {
+  if (panelOpen) {
+    closePanel();
+    return;
+  }
+  if (q('#passwordModal').classList.contains('open')) {
+    closePasswordModal();
+    return;
+  }
+  if (isAuthenticated) {
+    openPanel();
+  } else {
+    openPasswordModal();
+  }
+}
+
+q('#adminClose').addEventListener('click', closePanel);
+q('#adminOverlay').addEventListener('click', closePanel);
+
+// Close modal when clicking on its dark backdrop
+q('#passwordModal').addEventListener('click', (e) => {
+  if (e.target === q('#passwordModal')) closePasswordModal();
+});
+
+// Tabs
+qa('.admin-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    qa('.admin-tab').forEach(t => t.classList.remove('active'));
+    qa('.tab-content').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    q(`#tab-${tab.dataset.tab}`).classList.add('active');
+  });
+});
+
+// Inline editing
+qa('[data-editable]').forEach(el => {
+  el.addEventListener('click', () => { if (!document.body.classList.contains('edit-mode')) return; el.contentEditable = true; el.focus(); });
+  el.addEventListener('blur', () => {
+    el.contentEditable = false;
+    const key = el.dataset.editable;
+    const map = { navLogo:'navLogo', heroGreeting:'greeting', heroFirstName:'firstName', heroLastName:'lastName',
+      heroTagline:'tagline', aboutBio:'aboutBio', stat1val:'stat1val', stat1label:'stat1label',
+      stat2val:'stat2val', stat2label:'stat2label', stat3val:'stat3val', stat3label:'stat3label', footerName:'footerName' };
+    const sk = map[key];
+    if (sk) {
+      state.profile[sk] = (key === 'heroTagline' || key === 'aboutBio') ? el.innerHTML : el.textContent;
+      if (el.dataset.originalText !== undefined) el.dataset.originalText = el.textContent;
+      saveState(); renderAdmin();
+    }
+  });
+});
+
+// Keyboard shortcuts: Cmd+Shift+P (Mac) / Ctrl+Shift+P (Win/Linux) & Escape
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    if (q('#passwordModal').classList.contains('open')) {
+      closePasswordModal();
+      return;
+    }
+    if (panelOpen) {
+      closePanel();
+      return;
+    }
+  }
+
+  const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+  const isShift = e.shiftKey;
+  const isP = e.key === 'p' || e.key === 'P' || e.code === 'KeyP';
+
+  if (isCmdOrCtrl && isShift && isP) {
+    e.preventDefault();
+    e.stopPropagation();
+    requestEditAccess();
+  }
+});
+
+// Scroll reveal
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('visible'); });
+}, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+qa('.reveal').forEach(el => observer.observe(el));
+
+window.addEventListener('scroll', () => {
+  const ind = q('.scroll-indicator');
+  if (ind) ind.style.opacity = window.scrollY > 100 ? '0' : '1';
+});
+
+// ── INIT ──
+renderSite();
+</script>
+
+</body>
+</html>
